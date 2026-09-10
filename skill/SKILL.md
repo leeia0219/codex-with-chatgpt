@@ -20,7 +20,12 @@ whatever data it needs by itself.
 
 **Golden rules**
 
-1. NEVER paste file contents, diffs, or logs into ChatGPT. ChatGPT reads them through MCP.
+1. NEVER paste file contents, diffs, or logs into ChatGPT. ChatGPT reads current
+   workspace state through the C2C connector. When direct GitHub reads are
+   configured, it may use the connector's `github_*` tools for the matching
+   repository's pushed content. Never ask both sources for the same content.
+   When they differ, the local C2C workspace is authoritative unless the user
+   explicitly requested GitHub-only context.
 2. NEVER show the user technical internals (MCP, OAuth, PKCE, tunnel, ports, localhost).
    Speak in terms of "连接 ChatGPT / 安全连接 / 配对". The only exception is the
    **guided manual ChatGPT setup** below: expose only the exact settings
@@ -173,6 +178,26 @@ that close the tab, hide the window, or stall on the settings page.
 - If the checkout has no `node_modules` or no `dist/`, first run
   `corepack pnpm install && corepack pnpm build` inside it.
 - Always pass `-w <workspace root>` (the project the user is working on, NOT the c2c repo).
+
+## Optional direct GitHub context
+
+The bridge can expose committed GitHub content through `github_repository`,
+`github_list_directory`, and `github_read_file`. These tools never fall back to
+the local working tree.
+
+1. Detect the repository from `git remote get-url origin`; `.c2c.json` may
+   override it with `githubRepository` and `githubDefaultRef`.
+2. Public repositories need no credential. Private repositories use existing
+   GitHub SSH access when available, or a read-only server-side
+   `C2C_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN`.
+   Never type that token into ChatGPT or include it in a project file, prompt,
+   log, execution record, or connector setting. A GitHub App credential held by
+   ChatGPT cannot be extracted or reused by this local bridge.
+3. Call `github_repository` before the other GitHub tools. If it reports an
+   authorization error, continue with local C2C unless the user explicitly
+   requested GitHub-only context; in that case report the single missing setup.
+4. Use `github_*` for pushed content and local tools for current files,
+   uncommitted changes, diffs, and test results. Minimize duplicate reads.
 
 ## Daily update check
 
@@ -443,8 +468,10 @@ Project. Do **not** click the ChatGPT sidebar to create the Project
 3. On that same collection page only, open 右上角 **… → 项目设置**.
    Do not click 分享. Do not add 来源 / files.
    - 记忆: 仅限项目记忆 (project-only). Leave 库访问权限 disabled.
-   - 指令: paste **Project instructions** below (fill `{{…}}` from
-     `workspace_info` / setup). Use the exact `connectorName` from setup.
+   - 指令: paste **Project instructions** below. Fill workspace fields from
+     `workspace_info` / setup and fill `github_repository` from the verified
+     GitHub `origin` as `owner/repository`; use `none` when there is no GitHub
+     origin. Use the exact `connectorName` from setup.
      Never write the public / temporary address into 指令.
    Save and close settings.
 
@@ -459,11 +486,14 @@ You are the planning and review layer for one local workspace. Codex executes.
 This Project is bound only to:
 - Workspace name: {{workspace_name}}
 - Kind: {{project_type}} ({{languages}} / {{frameworks}})
-- Connector (use this one only): {{connector_name}}
+- Local connector (use only this C2C connector): {{connector_name}}
+- GitHub repository (optional pushed context): {{github_repository}}
 
-When you call tools, use ONLY that connector. Do not use any other
-Codex with ChatGPT connector. If workspace_info names a different
-workspace, stop. Do not plan. Do not use this Project's memory.
+For local workspace tools and direct GitHub reads, use ONLY that C2C connector.
+Use its github_repository, github_list_directory, and github_read_file tools only
+for the exact GitHub repository above. Do not use any other Codex with ChatGPT
+connector or GitHub repository. If workspace_info names a different workspace,
+stop. Do not plan. Do not use this Project's memory.
 
 Read code, git, diffs, and any released command output through that
 connector. Never ask anyone to paste file bodies, diffs, or logs. After
@@ -471,11 +501,12 @@ EXECUTED, call execution_output (list, then read) when a readable item
 exists; if status is restricted, review from git instead. Never upload
 the repo into this Project's files or sources.
 
-When facts conflict, trust this order:
+Avoid reading the same file through both sources. When facts conflict, trust this order:
 1. Current code from the connector
-2. A HANDOFF in this chat (this task's goal, progress, next step)
-3. These instructions
-4. This Project's memory (durable architecture only; stale memory loses)
+2. Pushed state from the matching GitHub repository
+3. A HANDOFF in this chat (this task's goal, progress, next step)
+4. These instructions
+5. This Project's memory (durable architecture only; stale memory loses)
 
 This Project's memory is only for this workspace. On HANDOFF, trust the
 brief, re-read code through the connector, and resume at NEXT_EXPECTED_STEP.
@@ -594,7 +625,9 @@ CHANGED_FILES:
 TESTS:
 27 passed
 
-Please independently inspect the workspace and current git diff through MCP.
+Please independently inspect the workspace and current git diff through the local connector.
+Use the connector's github_* tools only for matching pushed content, and do not
+read content there that the local connector already supplied.
 If execution_output lists a readable item for this iteration, list then read it.
 If status is restricted, ignore it and review from git_diff.
 ```

@@ -104,10 +104,11 @@ Ready.
 - **控制面（Computer Use）**：Codex 与 ChatGPT 之间只交换极小的结构化 `[C2C]`
   状态消息——`INIT → PLAN → EXECUTED → REVIEW → DONE`。绝不粘贴 diff、日志
   或文件内容。
-- **数据面（MCP）**：ChatGPT 缺什么自己拉什么，共 9 个只读工具：
+- **数据面（MCP）**：ChatGPT 缺什么自己拉什么，共 12 个只读工具：
   `workspace_info`、`list_directory`、`read_file`、`search_workspace`、
   `git_status`、`git_diff`、`test_status`、`execution_summary`、
-  `execution_output`。
+  `execution_output`、`github_repository`、`github_list_directory`、
+  `github_read_file`。
 - **独立审查**：Codex 执行完毕后，ChatGPT 通过 MCP 亲自检查真实的 git diff
   和测试记录——绝不因为 Codex 说"测试全过"就直接相信。
 
@@ -131,7 +132,7 @@ Ready.
 ```bash
 pnpm install
 pnpm build          # 产出 dist/，暴露 c2c 命令
-pnpm test           # vitest：146 个测试（路径安全、OAuth、配对、MCP 端到端）
+pnpm test           # vitest：170 个测试（路径安全、OAuth、配对、MCP 端到端）
 
 c2c setup           # 一条命令：Bridge + 隧道 + 配对码
 c2c sandbox-allow   # 把本地设置目录加入 Codex 沙箱白名单（macOS / Windows）
@@ -141,6 +142,15 @@ c2c status / doctor / pair / unpair / logs / stop
 环境要求：Node.js >= 20、git；公网连接需要 `cloudflared`
 （自动检测，Skill 会替你安装）。
 
+### 可选的 GitHub 直接读取
+
+三个 `github_*` 工具直接读取 GitHub 上已经提交的内容，绝不会回退到本机工作
+区。仓库默认从 `origin` 自动识别，也可以在 `.c2c.json` 中设置
+`githubRepository` 和 `githubDefaultRef`。公开仓库无需凭据；私有仓库会优先
+使用本机现有的 GitHub SSH 访问，也可以在启动 Codex/C2C 时提供仅限该仓库读取
+权限的 `C2C_GITHUB_TOKEN`、`GH_TOKEN` 或 `GITHUB_TOKEN`。凭据只留在服务端环境中，不会通过 MCP 返回，也不会写入
+项目。
+
 文档：[架构](docs/architecture.md) · [协议](docs/protocol.md) ·
 [安全](docs/security.md) · [故障排查](docs/troubleshooting.md)
 
@@ -149,7 +159,8 @@ c2c status / doctor / pair / unpair / logs / stop
 ```
 src/
   bridge/     本机回环 HTTP 服务、端口自动恢复、管理 API
-  mcp/        9 个只读工具、无状态 Streamable HTTP
+  mcp/        12 个只读工具、无状态 Streamable HTTP
+  github/     GitHub 已提交内容的可选只读访问
   auth/       OAuth 2.1（PKCE、动态注册、refresh 轮换、吊销）
   pairing/    一次性配对码（CSPRNG、TTL、限速）
   workspace/  路径收敛、敏感文件策略、搜索、git

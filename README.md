@@ -170,10 +170,11 @@ Credentials stay in the OS app state directory, not in the project.
 - **Control plane (Computer Use)**: Codex and ChatGPT exchange tiny structured
   `[C2C]` state messages — `INIT → PLAN → EXECUTED → REVIEW → DONE`. No diffs,
   no logs, no file bodies are ever pasted.
-- **Data plane (MCP)**: ChatGPT pulls what it needs itself through 9 read-only
+- **Data plane (MCP)**: ChatGPT pulls what it needs itself through 12 read-only
   tools: `workspace_info`, `list_directory`, `read_file`, `search_workspace`,
   `git_status`, `git_diff`, `test_status`, `execution_summary`,
-  `execution_output`.
+  `execution_output`, `github_repository`, `github_list_directory`, and
+  `github_read_file`.
 - **Independent review**: after Codex executes, ChatGPT inspects the actual
   git diff and test records through MCP — it never trusts "all tests passed"
   claims blindly.
@@ -201,7 +202,7 @@ Full threat model: [docs/security.md](docs/security.md)
 ```bash
 pnpm install
 pnpm build          # -> dist/, exposes the `c2c` bin
-pnpm test           # vitest: 146 tests (path security, OAuth, pairing, MCP e2e)
+pnpm test           # vitest: 170 tests (path security, OAuth, pairing, MCP e2e)
 
 c2c setup           # bridge + tunnel + pairing code, all in one
 c2c sandbox-allow   # whitelist the settings dir in Codex (macOS + Windows)
@@ -211,6 +212,18 @@ c2c status / doctor / pair / unpair / logs / stop
 Requirements: Node.js >= 20, git. `cloudflared` for the public connection
 (auto-detected; the Skill installs it for you).
 
+### Optional direct GitHub reads
+
+The three `github_*` tools read committed content directly from GitHub and
+never fall back to the local working tree. The repository is detected from
+`origin`, or can be set with `githubRepository` and `githubDefaultRef` in
+`.c2c.json`. Public repositories work without credentials. Private repositories
+use the machine's existing GitHub SSH access when available; alternatively,
+start Codex/C2C with `C2C_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN` set to a
+read-only fine-grained token for that repository. The
+credential remains server-side and is never returned through MCP or written to
+the project.
+
 Docs: [architecture](docs/architecture.md) · [protocol](docs/protocol.md) ·
 [security](docs/security.md) · [troubleshooting](docs/troubleshooting.md)
 
@@ -219,7 +232,7 @@ Docs: [architecture](docs/architecture.md) · [protocol](docs/protocol.md) ·
 ```
 src/
   bridge/     loopback HTTP server, port recovery, admin API
-  mcp/        9 read-only tools, stateless Streamable HTTP
+  mcp/        12 read-only tools, stateless Streamable HTTP
   auth/       OAuth 2.1 (PKCE, DCR, refresh rotation, revocation)
   pairing/    one-time pairing codes (CSPRNG, TTL, rate limits)
   workspace/  path containment, sensitive-file policy, search, git

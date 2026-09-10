@@ -76,7 +76,7 @@ afterAll(async () => {
 });
 
 describe("MCP tools over Streamable HTTP", () => {
-  it("lists all nine read-only tools", async () => {
+  it("lists all twelve read-only tools", async () => {
     const { tools } = await client.listTools();
     const names = tools.map((tool) => tool.name).sort();
     expect(names).toEqual([
@@ -84,6 +84,9 @@ describe("MCP tools over Streamable HTTP", () => {
       "execution_summary",
       "git_diff",
       "git_status",
+      "github_list_directory",
+      "github_read_file",
+      "github_repository",
       "list_directory",
       "read_file",
       "search_workspace",
@@ -101,9 +104,19 @@ describe("MCP tools over Streamable HTTP", () => {
     expectToolOutputSchema(tools, "search_workspace", ["matches", "matchCount", "truncated", "engine"]);
     expectToolOutputSchema(tools, "git_status", ["isRepo", "branch", "staged", "unstaged", "untracked"]);
     expectToolOutputSchema(tools, "git_diff", ["isRepo", "mode", "diff", "hasMore", "nextOffset"]);
+    expectToolOutputSchema(tools, "github_repository", ["configured", "repository", "defaultBranch", "authenticated"]);
+    expectToolOutputSchema(tools, "github_list_directory", ["repository", "ref", "path", "entries"]);
+    expectToolOutputSchema(tools, "github_read_file", ["repository", "ref", "path", "content", "nextStartLine"]);
     expectToolOutputSchema(tools, "test_status", ["available", "tests", "outputAvailable", "outputId"]);
     expectToolOutputSchema(tools, "execution_summary", ["records"]);
     expectToolOutputSchema(tools, "execution_output", ["action", "items", "text"]);
+  });
+
+  it("reports GitHub as unconfigured when the workspace has no origin", async () => {
+    const result = await client.callTool({ name: "github_repository", arguments: {} });
+    const info = structuredJsonOf<{ configured: boolean; repository: null }>(result);
+    expect(info.configured).toBe(false);
+    expect(info.repository).toBeNull();
   });
 
   it("documents git_diff pagination with its output field names", async () => {

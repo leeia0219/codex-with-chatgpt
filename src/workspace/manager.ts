@@ -58,6 +58,8 @@ export interface ListDirectoryResult {
 export interface ProjectConfig {
   name?: string;
   maxIterations?: number;
+  githubRepository?: string;
+  githubDefaultRef?: string;
 }
 
 function parseProjectConfig(value: unknown): ProjectConfig {
@@ -66,6 +68,8 @@ function parseProjectConfig(value: unknown): ProjectConfig {
   const config: ProjectConfig = {};
   if (typeof raw.name === "string") config.name = raw.name;
   if (typeof raw.maxIterations === "number") config.maxIterations = raw.maxIterations;
+  if (typeof raw.githubRepository === "string") config.githubRepository = raw.githubRepository;
+  if (typeof raw.githubDefaultRef === "string") config.githubDefaultRef = raw.githubDefaultRef;
   return config;
 }
 
