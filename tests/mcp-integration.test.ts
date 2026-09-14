@@ -102,7 +102,7 @@ describe("MCP tools over Streamable HTTP", () => {
     expectToolOutputSchema(tools, "list_directory", ["path", "entries", "total", "hasMore"]);
     expectToolOutputSchema(tools, "read_file", ["path", "content", "startLine", "endLine", "nextStartLine"]);
     expectToolOutputSchema(tools, "search_workspace", ["matches", "matchCount", "truncated", "engine"]);
-    expectToolOutputSchema(tools, "git_status", ["isRepo", "branch", "staged", "unstaged", "untracked"]);
+    expectToolOutputSchema(tools, "git_status", ["isRepo", "branch", "staged", "unstaged", "untracked", "hidden"]);
     expectToolOutputSchema(tools, "git_diff", ["isRepo", "mode", "diff", "hasMore", "nextOffset"]);
     expectToolOutputSchema(tools, "github_repository", ["configured", "repository", "defaultBranch", "authenticated"]);
     expectToolOutputSchema(tools, "github_list_directory", ["repository", "ref", "path", "entries"]);

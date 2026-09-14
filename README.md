@@ -128,6 +128,8 @@ c2c-<workspace>-laptop.example.com
 
 临时地址在进程或电脑重启后可能改变，ChatGPT 端需要删除旧连接并按新地址重建。固定域名通常可以跨重启复用；若 Cloudflare 授权失效，应重新登录并运行 doctor，不要先删除 ChatGPT App。
 
+如果当前网络会丢弃 Cloudflare 的 QUIC 连接，可在启动 C2C 前设置 `C2C_TUNNEL_PROTOCOL=http2`，然后重启 Bridge。未设置时继续使用 cloudflared 的默认传输方式。
+
 ### 为什么 v3 不自动更新
 
 这个分支含有原版没有的 GitHub 支持。自动拉取 `upstream/main` 可能覆盖这些修改，所以 v3 Skill 已删除自动检查和自动更新流程。需要同步上游时，维护者应先比较差异，再手工合并到 `camera-relate-v3` 并运行测试。
