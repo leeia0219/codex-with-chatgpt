@@ -141,6 +141,8 @@ across restarts. If you skip it, or the login fails, Codex stays on the temporar
 address — same features, just a slower repair.
 
 Credentials stay in the OS app state directory, not in the project.
+See [fixed Cloudflare connection guidance](docs/cloudflare-named-connection.md)
+for safe cross-computer setup and which local credentials must stay out of Git.
 
 ## How it works
 
