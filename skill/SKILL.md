@@ -199,37 +199,17 @@ the local working tree.
 4. Use `github_*` for pushed content and local tools for current files,
    uncommitted changes, diffs, and test results. Minimize duplicate reads.
 
-## Daily update check
+## Local setup check (custom v3 branch)
 
-At the START of every workflow below (before anything else), run these two
-commands (both are cheap / cached; never mention them unless an update exists):
-
-1. `c2c update-check --json`
-2. `c2c sandbox-allow --json` — writes the C2C state directory into Codex's
+At the start of a workflow run only `c2c sandbox-allow --json`. It writes the C2C state directory into Codex's
    sandbox `writable_roots` (macOS: `~/Library/Application Support/codex-with-chatgpt`;
    Windows: `%LOCALAPPDATA%\codex-with-chatgpt`; config file is
    `~/.codex/config.toml` on both, or `%USERPROFILE%\.codex\config.toml` on Windows).
-   If already allowlisted, this is a no-op and does not trigger elevation.
+If already allowlisted, this is a no-op.
 
-- `{ "updateAvailable": false }` → continue silently. Never mention the check.
-- `{ "updateAvailable": true }` → tell the user one line:
-  "检测到 Codex with ChatGPT 有新版本，我先更新一下（约 1 分钟），随后继续你的任务。"
-  Then run the update workflow below, and CONTINUE the original task afterwards.
-
-## Workflow: update（"更新 Codex with ChatGPT"，or triggered by the daily check）
-
-Inside the checkout directory (see Locations):
-
-1. `git pull --ff-only` (if it fails due to local edits: `git stash && git pull --ff-only`).
-2. `corepack pnpm install && corepack pnpm build`.
-3. Re-install the Skill: copy `skill/SKILL.md` to
-   `~/.codex/skills/codex-with-chatgpt/SKILL.md`, then fix the "checkout lives at:"
-   line in the copy to the actual checkout path.
-4. `c2c sandbox-allow --json` (so existing installs pick up the sandbox allowlist),
-   then `c2c restart -w <workspace>` so the bridge runs the new code, then
-   `c2c update-check --force --json` to refresh the cache (should now report up to date).
-5. Tell the user "✓ 已更新到最新版本" — then resume whatever task triggered this.
-   (The updated SKILL.md takes effect from the next Codex session; that's expected.)
+Do not run automatic update checks and never automatically pull the upstream
+repository. This installation is the custom `camera-relate-v3` branch; an
+upstream update can remove its GitHub support and tested Cloudflare behavior.
 
 ## Connection choice (once per workspace)
 
