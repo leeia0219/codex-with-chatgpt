@@ -1,269 +1,181 @@
-# Codex with ChatGPT
+# Codex with ChatGPT · 实际使用版
 
-> ChatGPT thinks. Codex works.
-> ChatGPT 负责思考，Codex 负责干活。
+> ChatGPT 负责规划和复核，Codex 负责改文件、运行命令和测试。
 
-> [!IMPORTANT]
-> **遇到问题？** 请先向 Codex 发送 **「更新 Codex with ChatGPT」** 并重试。更新到最新版本可以解决大多数已知问题。  
-> **Having trouble?** First ask Codex to **“Update Codex with ChatGPT”** and try again. Updating to the latest version resolves most known issues.
+这是我们在 Windows、ChatGPT Project、固定 Cloudflare 域名和 GitHub 仓库环境中实际跑通的 v3 工作流。它不会把整个仓库上传到 ChatGPT。ChatGPT 通过每个工作区自己的只读 App 按需读取文件、Git 状态、diff 和测试记录；Codex 始终保留执行权。
 
-## The problem · 解决什么问题
+## 已验证的使用方式
 
-**中文** — ChatGPT 付费订阅的网页版额度大量闲置，Codex 却在消耗紧张的
-API 额度做规划和 Review。本项目把"思考"交给你已付费的网页版 ChatGPT，
-Codex 只负责执行。不用 API Key、不搞逆向代理——官方网页 + 只读 MCP 桥接。
+- 一个本地工作区对应一个 ChatGPT Project 和一个 C2C App。
+- App 名称形如 `Codex with ChatGPT · <workspace>`。
+- 新对话必须在对应 Project 中建立，并在输入框选择该 App。
+- 本地未提交文件以 Workspace 读取为准；GitHub 读取只代表已经 push 的内容。
+- 固定域名适合长期连接；临时地址重启后可能变化。
+- Cloudflare、授权和会话凭据保存在系统应用数据目录，不进入 Git。
+- ChatGPT 只规划和复核；写文件、Shell、Git 和测试全部由 Codex 完成。
 
-**EN** — ChatGPT Plus/Pro web quota sits idle while your coding agent burns
-scarce API/Codex tokens on planning and review. This project moves the
-thinking to the subscription you already pay for; Codex only executes.
-No API keys, no reverse proxy — official web UI plus a read-only MCP bridge.
+## 在另一台 Windows 电脑安装 v3
 
-## What it is · 这是什么
-
-**中文** — 把 ChatGPT 网页版变成 Codex 编码会话的"规划与审查大脑"，执行权
-完全保留在 Codex 手里。你的仓库永远不会被上传：ChatGPT 通过一条安全的、
-OAuth 保护的**只读** MCP 连接，按需读取当前工作区里它真正需要的那几行代码。
-
-**EN** — Use the ChatGPT web app as the planning and review brain for your
-Codex coding sessions, while Codex keeps full ownership of execution. Your
-repository is never uploaded: ChatGPT reads exactly the lines it needs through
-a secure, OAuth-protected, **read-only** MCP connection to your current
-workspace.
-
-Detailed docs below are in English · 详细中文文档见 **[README.zh-CN.md](README.zh-CN.md)**
-
-## One-paste install · 一段话安装
-
-**中文** — 不懂 git、Node、终端？完全不需要懂。把下面这段话原样复制给你的
-编码 Agent（Codex），然后去倒杯咖啡：
+最简单的方法是把下面整段交给 Codex：
 
 ```text
-请帮我完整安装并配置 Codex with ChatGPT，全程自动，我是不懂技术的小白，
-所有事情你自己做：
+请安装并配置 Codex with ChatGPT camera-relate-v3：
 
-1. 环境自检：需要 git 和 Node.js ≥ 20，缺什么就自动安装
-  （macOS 用 Homebrew，Windows 用 winget），同时安装 cloudflared。
-2. 下载：把 https://github.com/XiaoDuoYa/codex-with-chatgpt 克隆到
-   ~/codex-with-chatgpt（已存在就 git pull 更新）。
-3. 构建：在该目录里执行 corepack pnpm install 和 corepack pnpm build。
-4. 安装 Skill：把仓库里的 skill/SKILL.md 复制到
-   ~/.codex/skills/codex-with-chatgpt/SKILL.md，并把文件中
-   "The codex-with-chatgpt checkout lives at:" 那一行的路径改成实际克隆路径。
-5. 首次配置：按 SKILL.md 里的 first-time setup 流程执行
-  （运行 c2c setup，用内置浏览器打开 ChatGPT 配置连接器并输入配对码）。
-   全程只用内置浏览器，禁止打开任何第三方浏览器。
-6. 只有遇到需要我登录（ChatGPT / Cloudflare）、验证码或两步验证时才叫我，
-   而且一次只告诉我一个动作。
-7. 完成后给我看 ✓ 清单，并确认文件读取测试通过。我不懂 MCP、OAuth、
-   Tunnel、端口这些词，不要向我解释；出了问题先自己修。
+1. 检查并安装 Git、Node.js 20+、pnpm 和 cloudflared。
+2. 克隆 https://github.com/leeia0219/codex-with-chatgpt 到
+   C:\Users\<用户名>\codex-with-chatgpt，并 checkout camera-relate-v3 分支。
+3. 执行 pnpm install 和 pnpm build。
+4. 把 skill/SKILL.md 安装到
+   C:\Users\<用户名>\.codex\skills\codex-with-chatgpt\SKILL.md，
+   并把其中 checkout 路径改成本机实际路径。
+5. 对当前工作区执行 c2c sandbox-allow 和首次 setup。
+6. 只使用 Codex 内置浏览器配置 ChatGPT；只有登录、验证码、2FA 或
+   Cloudflare 授权需要我操作，而且一次只告诉我一个动作。
+7. 一个工作区只建立一个 App。创建 ChatGPT Project，名称使用工作区名，
+   记忆选择“仅限项目记忆”。
+8. 最后调用 workspace_info，并确认返回的工作区、分支和 HEAD 正确。
 ```
 
+手动安装命令：
 
-**EN** — Don't know git, Node, or terminals? You don't need to. Copy the
-paragraph below, paste it to your coding agent (Codex), and go grab a coffee:
-
-```text
-Please install and configure "Codex with ChatGPT" for me, fully automatically.
-I am a non-technical user — do everything yourself:
-
-1. Check the environment: git and Node.js >= 20 must be available. Install
-   anything missing yourself (macOS: Homebrew, Windows: winget). Also install
-   cloudflared.
-2. Download: clone https://github.com/XiaoDuoYa/codex-with-chatgpt into
-   ~/codex-with-chatgpt (if it already exists, git pull to update).
-3. Build: inside that folder run `corepack pnpm install` then `corepack pnpm build`.
-4. Install the Skill: copy skill/SKILL.md to
-   ~/.codex/skills/codex-with-chatgpt/SKILL.md, and update the line
-   "The codex-with-chatgpt checkout lives at:" to the actual clone path.
-5. First-time setup: follow the SKILL.md "first-time setup" workflow
-   (run c2c setup, configure the ChatGPT connector in the BUILT-IN browser,
-   enter the pairing code). Never open a third-party browser.
-6. Only interrupt me for logins (ChatGPT / Cloudflare), CAPTCHAs or 2FA —
-   and give me exactly ONE action at a time.
-7. When done, show me the ✓ checklist and confirm the file-read test passed.
-   I don't know what MCP, OAuth, tunnels or ports are. Don't explain them.
-   If anything breaks, fix it yourself first.
-```
-
-
-**Updates · 更新** — The Skill checks GitHub once a day and updates itself when a
-new version is released; no action needed. You can also say "更新 Codex with ChatGPT"
-anytime. / Skill 每天自动检查一次 GitHub，有新版本会自动更新，无需任何操作；
-也可以随时对 Codex 说"更新 Codex with ChatGPT"。
-
----
-
-*The sections below are in English. 以下详细内容为英文，中文完整版见
-[README.zh-CN.md](README.zh-CN.md)。*
-
-## Install → Setup → Use (manual)
-
-1. Install the Codex Skill: copy `skill/` to `~/.codex/skills/codex-with-chatgpt/`.
-2. Tell Codex: **"Set up Codex with ChatGPT."** (中文: "使用 Codex with ChatGPT 完成首次配置。")
-3. Use Codex normally: **"Use Codex with ChatGPT to implement XXX."**
-
-That's the whole manual. You don't need to know what MCP, OAuth, tunnels,
-ports or localhost are — Codex configures everything automatically and you
-just see:
-
-```
-Codex with ChatGPT
-
-✓ Project detected
-✓ Workspace Bridge started
-✓ Secure connection established
-✓ ChatGPT connected
-✓ File read test passed
-
-Ready.
-```
-
-The only steps that may need you: logging into ChatGPT (and, if you want a
-stable hostname, logging into Cloudflare once). A **new** workspace also asks
-you to create a ChatGPT Project (collection) once — pick **project-only
-memory**, name it after the workspace. If the sidebar has no Projects row,
-hover **Chats**, open the … menu, and choose **Organize by project**. Codex
-then saves that collection link and starts chats from that page. Existing
-workspaces that already have a C2C chat stay on the old one-conversation
-style until you ask to switch.
-
-### Optional stable hostname
-
-The default public address is a temporary Cloudflare URL. It changes when the
-bridge restarts, and Codex repairs ChatGPT by deleting that workspace's
-connector and adding it again.
-
-If you have a Cloudflare account and a domain already on Cloudflare, first-time
-setup (and the next coding session, once) will ask whether you want a stable
-hostname such as `c2c-<project>.your-domain.com`. That path opens a browser so
-you can authorize Cloudflare. After that, the ChatGPT connector keeps working
-across restarts. If you skip it, or the login fails, Codex stays on the temporary
-address — same features, just a slower repair.
-
-Credentials stay in the OS app state directory, not in the project.
-See [fixed Cloudflare connection guidance](docs/cloudflare-named-connection.md)
-for safe cross-computer setup and which local credentials must stay out of Git.
-
-## How it works
-
-```
-             ┌───────────────────────────┐
-             │       ChatGPT Web         │
-             │  Reason / Plan / Review   │
-             └──────────┬──────────▲─────┘
-                        │          │
-               MCP      │          │ Computer Use
-            Data Plane  │          │ Control Plane (<1 KB messages)
-                        ▼          │
-             ┌─────────────────────┐
-             │      C2C Bridge     │   loopback-only HTTP server
-             │  read-only MCP      │   OAuth 2.1 + one-time pairing code
-             │  OAuth + Pairing    │   Cloudflare Quick Tunnel
-             │  Tunnel Manager     │
-             └──────────┬──────────┘
-                        │  read-only
-                        ▼
-             ┌─────────────────────┐          ┌─────────────────────┐
-             │   Local Workspace   │◀─────────│    Codex Harness    │
-             └─────────────────────┘ edit/git │ shell / tests / fix │
-                                              └─────────────────────┘
-```
-
-- **Control plane (Computer Use)**: Codex and ChatGPT exchange tiny structured
-  `[C2C]` state messages — `INIT → PLAN → EXECUTED → REVIEW → DONE`. No diffs,
-  no logs, no file bodies are ever pasted.
-- **Data plane (MCP)**: ChatGPT pulls what it needs itself through 12 read-only
-  tools: `workspace_info`, `list_directory`, `read_file`, `search_workspace`,
-  `git_status`, `git_diff`, `test_status`, `execution_summary`,
-  `execution_output`, `github_repository`, `github_list_directory`, and
-  `github_read_file`.
-- **Independent review**: after Codex executes, ChatGPT inspects the actual
-  git diff and test records through MCP — it never trusts "all tests passed"
-  claims blindly.
-
-## Security model (short version)
-
-- **Read-only by construction**: write/delete/shell/commit tools simply do not
-  exist on the server. No prompt injection can enable them.
-- **One workspace = one boundary**: every token is bound to a single workspace;
-  path containment uses canonical realpaths (symlink/`../`/absolute-path escapes
-  are all blocked and tested).
-- **Sensitive files never leave**: `.env*`, keys, SSH, credentials are denied by
-  default (`.env.example` allowed); `.c2cignore` adds your own rules.
-- **Knowing the URL grants nothing**: the public MCP endpoint requires OAuth 2.1
-  (PKCE S256, dynamic client registration, rotating refresh tokens). Without a
-  token: 401. Wrong workspace: 403.
-- **The model never sees long-lived credentials**: the only secret that ever
-  touches a browser is a one-time pairing code (5-minute TTL, 5 attempts,
-  rate-limited, destroyed on use).
-
-Full threat model: [docs/security.md](docs/security.md)
-
-## For developers
-
-```bash
+```powershell
+git clone --branch camera-relate-v3 https://github.com/leeia0219/codex-with-chatgpt `
+  "$HOME\codex-with-chatgpt"
+Set-Location "$HOME\codex-with-chatgpt"
 pnpm install
-pnpm build          # -> dist/, exposes the `c2c` bin
-pnpm test           # vitest: 170 tests (path security, OAuth, pairing, MCP e2e)
-
-c2c setup           # bridge + tunnel + pairing code, all in one
-c2c sandbox-allow   # whitelist the settings dir in Codex (macOS + Windows)
-c2c status / doctor / pair / unpair / logs / stop
+pnpm build
+New-Item -ItemType Directory -Force "$HOME\.codex\skills\codex-with-chatgpt"
+Copy-Item .\skill\SKILL.md "$HOME\.codex\skills\codex-with-chatgpt\SKILL.md" -Force
 ```
 
-Requirements: Node.js >= 20, git. `cloudflared` for the public connection
-(auto-detected; the Skill installs it for you).
+安装 Skill 后，让 Codex 执行：
 
-### Optional direct GitHub reads
-
-The three `github_*` tools read committed content directly from GitHub and
-never fall back to the local working tree. The repository is detected from
-`origin`, or can be set with `githubRepository` and `githubDefaultRef` in
-`.c2c.json`. Public repositories work without credentials. Private repositories
-use the machine's existing GitHub SSH access when available; alternatively,
-start Codex/C2C with `C2C_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN` set to a
-read-only fine-grained token for that repository. The
-credential remains server-side and is never returned through MCP or written to
-the project.
-
-Docs: [architecture](docs/architecture.md) · [protocol](docs/protocol.md) ·
-[security](docs/security.md) · [troubleshooting](docs/troubleshooting.md)
-
-## Project layout
-
-```
-src/
-  bridge/     loopback HTTP server, port recovery, admin API
-  mcp/        12 read-only tools, stateless Streamable HTTP
-  auth/       OAuth 2.1 (PKCE, DCR, refresh rotation, revocation)
-  pairing/    one-time pairing codes (CSPRNG, TTL, rate limits)
-  workspace/  path containment, sensitive-file policy, search, git
-  tunnel/     TunnelProvider abstraction + Cloudflare Quick/Named Tunnel
-  execution/  execution records for the review loop
-  process/    daemon lifecycle
-  cli/        the c2c CLI
-skill/        the Codex Skill (the real UX layer)
-tests/        unit + integration tests
-docs/         architecture / protocol / security / troubleshooting
+```text
+Set up Codex with ChatGPT for this workspace using the Codex with ChatGPT skill.
 ```
 
-## Status & disclaimer
+## 首次连接的实际流程
 
-V1. Verified end-to-end: bridge, OAuth + pairing, public tunnel, ChatGPT
-connector setup, zero-touch first-run experience.
+1. C2C 检测当前 Git 工作区。
+2. 选择临时地址或固定域名。
+3. 在 ChatGPT 管理页创建一个与工作区同名的 App。
+4. 完成一次配对。
+5. 在 ChatGPT 创建对应 Project，记忆选择“仅限项目记忆”。
+6. 在 Project 的新 **Chat** 对话中，从输入框选择准确的 C2C App。
+7. 调用 `workspace_info` 验证工作区名称、分支、HEAD 和 dirty 状态。
 
-**Unofficial community project. Not affiliated with or endorsed by OpenAI.**
+如果旧对话提示 App unavailable，而管理页显示连接正常，通常是旧对话缓存了已经删除的 App 身份。在同一个 Project 中新建 Chat 对话、重新选择当前 App，再执行 `workspace_info`。不要为了测试连续建立多个同名 App。
+
+## App 和 Plugin 是不是两个
+
+不是。ChatGPT 当前把聊天中使用的能力称为 **App**，管理页地址和部分内部 ID 仍包含 `plugins` 或 `plugin_asdk_app`。这通常只是界面和内部命名：
+
+- 聊天输入框里选择的是 App；
+- `/plugins` 页面用于管理它；
+- 同名 App 在管理页只有一条记录时，就只有一个连接。
+
+每个工作区应只保留一个准确名称的 App。旧地址失效时，删除该工作区的旧 App 后用同一个名称重建，不要创建 `-new`、`-v4` 等重复副本。
+
+## 固定域名与 Git 安全
+
+Git 仓库只保存通用实现和脱敏说明。以下内容不得提交：
+
+- Cloudflare 登录证书和 tunnel credential JSON；
+- API token、tunnel token、OAuth token、配对码和 cookie；
+- `.env`、PFX、PEM、私钥和运行日志；
+- 不希望公开的真实域名、hostname 和 tunnel ID。
+
+C2C 运行状态位于操作系统应用数据目录，Cloudflared 凭据也位于仓库外。因此普通 `git clone`、`git pull` 和 `git push` 不会迁移连接权限。
+
+另一台电脑应重新登录 Cloudflare。两台电脑需要同时在线时，为每台机器使用独立 hostname，例如：
+
+```text
+c2c-<workspace>-desktop.example.com
+c2c-<workspace>-laptop.example.com
+```
+
+更完整的脱敏经验见 [固定 Cloudflare 连接说明](docs/cloudflare-named-connection.md)。
+
+## 本地工作区与 GitHub
+
+v3 可同时提供两类只读数据：
+
+| 来源 | 适合读取 | 不包含 |
+|---|---|---|
+| Workspace | 当前文件、未提交修改、git diff、测试记录 | 工作区之外的文件 |
+| GitHub | 已提交并 push 的仓库内容 | 本地未提交修改 |
+
+公开仓库无需 GitHub 凭据。私有仓库可使用本机已有的 GitHub SSH 权限，或只读 fine-grained token。Token 只能放在服务端环境变量中，不能写进仓库、ChatGPT Project 指令或聊天内容。
+
+如果目标只是让 ChatGPT 查看当前开发状态，优先使用 Workspace。只有需要比较远端已 push 内容时才使用 GitHub，避免把同一文件从两边重复读取。
+
+## 日常使用
+
+给 Codex 的请求示例：
+
+```text
+使用 Codex with ChatGPT · <workspace> 规划、实现并复核这个任务：……
+```
+
+协作过程为：
+
+```text
+INIT → PLAN → Codex 执行 → EXECUTED → ChatGPT 复核 → DONE / 下一轮
+```
+
+Codex 只发送很短的控制消息。ChatGPT 通过 App 自己读取文件和 diff，不需要把大文件粘贴进网页聊天。
+
+## 重启与故障恢复
+
+先运行：
+
+```powershell
+node .\bin\c2c.js doctor -w "C:\path\to\workspace" --json
+```
+
+常见处理：
+
+- 固定域名正常：重启本地连接即可，ChatGPT App 地址保持不变。
+- Cloudflare 授权过期：重新登录 Cloudflare，再运行 doctor；无需删除 App。
+- 临时地址变化：只删除当前工作区对应的旧 App，再用相同名称和新地址创建。
+- 配对过期：生成新的单次配对码。
+- ChatGPT 显示 App unavailable：先确认管理页连接正常，再在 Project 中新建 Chat 对话并重新选择 App。
+- 工作区读错：立即停止，检查 Project 指令和所选 App 名称。
+
+## 安全边界
+
+- Bridge 只监听本机回环地址。
+- ChatGPT 暴露的是只读工具，不包含写文件、删除、Shell 或 Git push。
+- 每个授权令牌绑定单一工作区。
+- 路径逃逸、符号链接逃逸和敏感文件读取受到限制。
+- 公网地址本身不能直接取得仓库内容，访问仍需授权。
+- 长期凭据不进入聊天；浏览器中只输入短期、一次性的配对码。
+
+完整设计见 [架构](docs/architecture.md)、[安全模型](docs/security.md)、[协议](docs/protocol.md) 和 [故障排查](docs/troubleshooting.md)。
+
+## 开发与验证
+
+```powershell
+pnpm install
+pnpm build
+pnpm test
+```
+
+主要目录：
+
+```text
+src/          Bridge、只读工具、授权、GitHub、连接和进程管理
+skill/        Codex 使用的完整自动化工作流
+tests/        单元和集成测试
+docs/         架构、安全、协议和运维文档
+```
+
+## 状态与声明
+
+当前 v3 已实际验证：Windows 本机工作区读取、ChatGPT Project、App 配对、固定 Cloudflare 域名、GitHub 仓库识别、执行记录和 ChatGPT 独立复核。
+
+这是非官方社区项目，与 OpenAI、Microsoft 或 Cloudflare 无关联，也未获其背书。
 
 ## License
 
 [MIT](LICENSE)
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=xiaoduoya%2Fcodex-with-chatgpt&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=xiaoduoya/codex-with-chatgpt&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=xiaoduoya/codex-with-chatgpt&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=xiaoduoya/codex-with-chatgpt&type=date&legend=top-left" />
- </picture>
-</a>
