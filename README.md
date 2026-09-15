@@ -77,6 +77,12 @@ Codex 会继续完成本地启动、ChatGPT App 配置、配对和工作区读�
 
 在 ChatGPT 浏览器中打开 **Settings → Security**，开启 **Developer mode**，然后再创建或授权 `Codex with ChatGPT` App。切换到另一个 ChatGPT 账号后，需要在该账号中重新开启 Developer mode，并重新添加和授权 App；原账号的 Project、对话和连接不会自动转移。
 
+### 为工作区创建 ChatGPT Project
+
+首次连接这个工作区时，在 ChatGPT 中新建一个 Project，名称使用工作区名称，例如 `camera_relate-v3`，并将记忆范围选择为 **仅限项目记忆（Project-only memory）**。在该 Project 中新建 **Chat** 对话，不要使用 **Work** 对话；然后在输入框中选择准确的 `Codex with ChatGPT · camera_relate-v3` App，并调用 `workspace_info` 验证连接到的是当前工作区。
+
+每个工作区只需要一个 Project。切换到另一个 ChatGPT 账号后，必须在新账号中重新创建 Project、开启 Project-only memory，并重新添加和授权 App。
+
 ## 实际使用方式
 
 一个工作区只使用：
