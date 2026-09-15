@@ -46,7 +46,7 @@ Skill 会告诉 ChatGPT：
 
 ## 简单安装（Windows）
 
-需要：Git、Node.js 20+、pnpm、cloudflared，以及 Codex 桌面版。
+需要：Git、Node.js 20+、pnpm、cloudflared，以及 Codex 桌面版。首次在 ChatGPT 中添加连接前，必须在 ChatGPT 的 **Settings → Security** 中开启 **Developer mode**。
 
 ```powershell
 git clone --branch camera-relate-v3 https://github.com/leeia0219/codex-with-chatgpt `
@@ -72,6 +72,10 @@ Set up Codex with ChatGPT for this workspace using the Codex with ChatGPT skill.
 ```
 
 Codex 会继续完成本地启动、ChatGPT App 配置、配对和工作区读取验证。需要用户亲自处理的通常只有登录、验证码、2FA 和 Cloudflare 授权。
+
+### ChatGPT 设置要求
+
+在 ChatGPT 浏览器中打开 **Settings → Security**，开启 **Developer mode**，然后再创建或授权 `Codex with ChatGPT` App。切换到另一个 ChatGPT 账号后，需要在该账号中重新开启 Developer mode，并重新添加和授权 App；原账号的 Project、对话和连接不会自动转移。
 
 ## 实际使用方式
 
