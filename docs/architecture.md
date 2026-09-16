@@ -6,7 +6,7 @@
              │  Reason / Plan / Review   │
              └──────────┬──────────▲─────┘
                         │          │
-               MCP      │          │ Computer Use
+               MCP      │          │ IAB browser-use JS
             Data Plane  │          │ Control Plane
                         ▼          │
              ┌─────────────────────┐
@@ -31,7 +31,8 @@
 ## Principles
 
 - **ChatGPT thinks. Codex works.** The bridge never re-implements a coding harness.
-- **Computer Use = control plane**: tiny `[C2C]` state messages (< 1 KB).
+- **Built-in browser-use JS = control plane**: tiny `[C2C]` state messages (< 1 KB).
+  Computer Use and external browsers are forbidden for ChatGPT steps.
 - **MCP = data plane**: ChatGPT pulls files/diffs/search results itself.
 - **Read-only by design**: no write/exec tools exist in V1 at all.
 - **Workspace is the security boundary**: one bridge = one workspace = one token audience.

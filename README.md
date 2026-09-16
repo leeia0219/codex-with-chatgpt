@@ -101,6 +101,14 @@ Codex 会继续完成本地启动、ChatGPT App 配置、配对和工作区读�
 
 ChatGPT 读取代码并给出计划，Codex 执行，随后 ChatGPT 再读取真实 diff 和测试记录进行复核。
 
+### 我们怎样操作 ChatGPT 对话
+
+桌面 Codex 使用 **Codex 内置浏览器（`iab`）的 browser-use JavaScript 接口** 操作 ChatGPT 页面：在已保存的同一 Project/Chat 对话里填写简短的 `[C2C]` 状态消息，读取计划与复核回复。**禁止使用 Computer Use**，包括它的截图定位、桌面坐标点击和系统级键盘模拟；也不启动 Chrome、Edge 等外部浏览器代替内置浏览器。只有用户明确要求用自己的浏览器完成 Cloudflare 登录时，那一步可以例外；ChatGPT 对话仍回到内置浏览器。
+
+控制消息只包含任务 ID、轮次、状态和简短结果，保持在 1 KB 以内。代码、文件正文、diff 和长日志不粘贴进聊天；ChatGPT 通过只读 C2C 连接器自行读取当前 Workspace，Codex 在本机编辑、运行命令和测试，并用 `c2c record` 保存可复核的执行摘要。浏览器调用超时或 ChatGPT 仍在生成时，先检查同一标签页和本地 checkpoint，**不要重发**已经提交的 `INIT` / `EXECUTED`。
+
+当 WSL 终端 Codex 在同一个 Windows 挂载工作区修改文件时，ChatGPT 下一次通过连接器读取就能看到当前版本，但它不会自动收到改动通知。终端 Codex 若没有桌面内置浏览器控制能力，也不会自动共享桌面的 C2C 会话/checkpoint；我们让它负责工作和起草短消息，再由用户在已保存的 ChatGPT 对话与终端之间传递计划和回复。保持原工作区的连接在线，不要仅为交接重建 App 或重发上一轮状态。
+
 ## 我们实际踩过的坑
 
 ### App 和 Plugin 看起来像两个
