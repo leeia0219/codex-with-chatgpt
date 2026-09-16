@@ -73,6 +73,21 @@ Set up Codex with ChatGPT for this workspace using the Codex with ChatGPT skill.
 
 Codex 会继续完成本地启动、ChatGPT App 配置、配对和工作区读取验证。需要用户亲自处理的通常只有登录、验证码、2FA 和 Cloudflare 授权。
 
+### 保存本机路径和固定域名
+
+仓库提供 [LOCAL_SETUP.example.md](LOCAL_SETUP.example.md)。首次安装后复制为
+`LOCAL_SETUP.md`，填写这台电脑的 C2C 路径、工作区路径、固定域名、App 名称和
+Project 名称。真实的 `LOCAL_SETUP.md` 已加入 `.gitignore`，不会被 push；模板和
+根目录的 `AGENTS.md` 会提交到 Git，因此另一段 Codex 对话进入本仓库时会先读取
+这份本机记忆，再按 `skill/SKILL.md` 工作。
+
+```powershell
+Copy-Item .\LOCAL_SETUP.example.md .\LOCAL_SETUP.md
+```
+
+模板中只能记录路径、名称和固定地址。Cloudflare credential、tunnel ID、token、
+配对码、cookie、私钥和证书不能写入该文件。
+
 ### ChatGPT 设置要求
 
 在 ChatGPT 浏览器中打开 **Settings → Security**，开启 **Developer mode**，然后再创建或授权 `Codex with ChatGPT` App。切换到另一个 ChatGPT 账号后，需要在该账号中重新开启 Developer mode，并重新添加和授权 App；原账号的 Project、对话和连接不会自动转移。
