@@ -58,7 +58,7 @@ beforeAll(async () => {
   });
   const tokens = bridge.authStore.issueTokens({
     clientId: "it-client",
-    scopes: ["workspace.read", "workspace.search", "git.read", "execution.read"],
+    scopes: ["workspace.read", "workspace.write", "workspace.search", "git.read", "execution.read"],
   });
   accessToken = tokens.accessToken;
 
@@ -76,7 +76,7 @@ afterAll(async () => {
 });
 
 describe("MCP tools over Streamable HTTP", () => {
-  it("lists all twelve read-only tools", async () => {
+  it("lists all workspace tools", async () => {
     const { tools } = await client.listTools();
     const names = tools.map((tool) => tool.name).sort();
     expect(names).toEqual([
@@ -92,9 +92,9 @@ describe("MCP tools over Streamable HTTP", () => {
       "search_workspace",
       "test_status",
       "workspace_info",
+      "write_file",
     ]);
-    // no write tools in V1
-    for (const forbidden of ["write_file", "delete_file", "execute_shell", "git_commit", "install_package"]) {
+    for (const forbidden of ["delete_file", "execute_shell", "git_commit", "install_package"]) {
       expect(names).not.toContain(forbidden);
     }
 
@@ -110,6 +110,7 @@ describe("MCP tools over Streamable HTTP", () => {
     expectToolOutputSchema(tools, "test_status", ["available", "tests", "outputAvailable", "outputId"]);
     expectToolOutputSchema(tools, "execution_summary", ["records"]);
     expectToolOutputSchema(tools, "execution_output", ["action", "items", "text"]);
+    expectToolOutputSchema(tools, "write_file", ["path", "format", "bytesWritten", "created"]);
   });
 
   it("reports GitHub as unconfigured when the workspace has no origin", async () => {
@@ -142,6 +143,16 @@ describe("MCP tools over Streamable HTTP", () => {
     const result = await client.callTool({ name: "read_file", arguments: { path: "hello.txt" } });
     const file = structuredJsonOf<{ content: string; totalLines: number }>(result);
     expect(file.content).toContain("Hello from Codex with ChatGPT!");
+  });
+
+  it("write_file creates documentation and requires overwrite", async () => {
+    const created = await client.callTool({ name: "write_file", arguments: { path: "docs/note.md", format: "markdown", content: "# Note" } });
+    const result = structuredJsonOf<{ path: string; created: boolean }>(created);
+    expect(result).toEqual({ path: "docs/note.md", format: "markdown", bytesWritten: 6, created: true });
+
+    const refused = await client.callTool({ name: "write_file", arguments: { path: "docs/note.md", format: "markdown", content: "changed" } });
+    expect(refused.isError).toBe(true);
+    expect(textOf(refused)).toContain("FILE_EXISTS");
   });
 
   it("read_file denies .env with ACCESS_DENIED_SENSITIVE_FILE and no content", async () => {

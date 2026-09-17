@@ -116,6 +116,21 @@ Copy-Item .\LOCAL_SETUP.example.md .\LOCAL_SETUP.md
 
 ChatGPT 读取代码并给出计划，Codex 执行，随后 ChatGPT 再读取真实 diff 和测试记录进行复核。
 
+### 结构化写入文档
+
+连接授权 `workspace.write` 后，ChatGPT 可以通过 `write_file` 写入工作区内的 UTF-8 文档文件：
+
+```json
+{
+  "path": "docs/design.md",
+  "format": "markdown",
+  "content": "# Design\n...",
+  "overwrite": false
+}
+```
+
+仅允许 `.md`、`.markdown`、`.txt`、`.json`、`.yaml` 和 `.yml` 文件；覆盖已有文件必须明确设置 `overwrite: true`。新增写入权限后需要重新授权 ChatGPT App。
+
 ### 我们怎样操作 ChatGPT 对话
 
 桌面 Codex 使用 **Codex 内置浏览器（`iab`）的 browser-use JavaScript 接口** 操作 ChatGPT 页面：在已保存的同一 Project/Chat 对话里填写简短的 `[C2C]` 状态消息，读取计划与复核回复。**禁止使用 Computer Use**，包括它的截图定位、桌面坐标点击和系统级键盘模拟；也不启动 Chrome、Edge 等外部浏览器代替内置浏览器。只有用户明确要求用自己的浏览器完成 Cloudflare 登录时，那一步可以例外；ChatGPT 对话仍回到内置浏览器。

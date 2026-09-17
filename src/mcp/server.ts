@@ -140,6 +140,13 @@ const readFileOutputSchema = {
   content: z.string(),
 };
 
+const writeFileOutputSchema = {
+  path: z.string(),
+  format: z.string(),
+  bytesWritten: z.number().int().nonnegative(),
+  created: z.boolean(),
+};
+
 const searchMatchOutputSchema = z.object({
   path: z.string(),
   line: z.number().int().nonnegative(),
@@ -328,6 +335,31 @@ export function createMcpServer(ctx: McpContext): McpServer {
       if (denied) return denied;
       try {
         return okStructured(await workspace.readFile(args.path, { startLine: args.start_line, endLine: args.end_line }));
+      } catch (error) {
+        return mapError(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "write_file",
+    {
+      title: "Write documentation file",
+      description: `Write a UTF-8 documentation file inside the workspace. Only .md, .markdown, .txt, .json, .yaml and .yml files are allowed. Existing files require overwrite=true. ${UNTRUSTED_NOTE}`,
+      inputSchema: {
+        path: z.string().describe("Workspace-relative documentation file path"),
+        format: z.enum(["markdown", "text", "json", "yaml"]).describe("Document format"),
+        content: z.string().max(1024 * 1024).describe("UTF-8 text content to write"),
+        overwrite: z.boolean().default(false).describe("Allow replacing an existing file"),
+      },
+      outputSchema: writeFileOutputSchema,
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async (args, extra) => {
+      const denied = requireScope(extra.authInfo, "workspace.write");
+      if (denied) return denied;
+      try {
+        return okStructured(await workspace.writeFile(args.path, args.content, args.format, args.overwrite));
       } catch (error) {
         return mapError(error);
       }

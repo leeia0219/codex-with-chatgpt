@@ -73,6 +73,7 @@ function pairingPage(opts: {
 }): string {
   const scopeLabels: Record<string, string> = {
     "workspace.read": "Read files in this workspace",
+    "workspace.write": "Write documentation files in this workspace",
     "workspace.search": "Search this workspace",
     "git.read": "Read git status and diffs",
     "execution.read": "Read Codex execution summaries",

@@ -13,7 +13,8 @@ export type WorkspaceErrorCode =
   | "NOT_A_FILE"
   | "NOT_A_DIRECTORY"
   | "BINARY_FILE"
-  | "FILE_TOO_LARGE";
+  | "FILE_TOO_LARGE"
+  | "FILE_EXISTS";
 
 export class WorkspaceError extends Error {
   constructor(
@@ -38,6 +39,13 @@ export interface ReadFileResult {
   remainingLines: number;
   nextStartLine: number | null;
   content: string;
+}
+
+export interface WriteFileResult {
+  path: string;
+  format: string;
+  bytesWritten: number;
+  created: boolean;
 }
 
 export interface DirEntry {
@@ -247,6 +255,33 @@ export class Workspace {
       nextStartLine: remaining > 0 ? actualEnd + 1 : null,
       content: lines.join("\n"),
     };
+  }
+
+  async writeFile(
+    requested: string,
+    content: string,
+    format: string,
+    overwrite = false
+  ): Promise<WriteFileResult> {
+    if (typeof content !== "string") throw new WorkspaceError("INVALID_PATH", "Content must be text");
+    const normalizedFormat = format.trim().toLowerCase();
+    const allowed = new Set(["markdown", "text", "json", "yaml"]);
+    if (!allowed.has(normalizedFormat)) throw new WorkspaceError("INVALID_PATH", "Unsupported document format");
+    const { abs, rel } = this.resolve(requested);
+    const allowedExtension = /\.(md|markdown|txt|json|ya?ml)$/i.test(rel);
+    if (!allowedExtension) throw new WorkspaceError("INVALID_PATH", "Only documentation text files may be written");
+    let existed = false;
+    try {
+      const stat = await fs.promises.stat(abs);
+      existed = stat.isFile();
+      if (!existed) throw new WorkspaceError("NOT_A_FILE", `Not a regular file: ${rel}`);
+    } catch (error) {
+      if (error instanceof WorkspaceError) throw error;
+    }
+    if (existed && !overwrite) throw new WorkspaceError("FILE_EXISTS", `File already exists: ${rel}; set overwrite=true`);
+    await fs.promises.mkdir(path.dirname(abs), { recursive: true });
+    await fs.promises.writeFile(abs, content, { encoding: "utf8", flag: "w" });
+    return { path: rel, format: normalizedFormat, bytesWritten: Buffer.byteLength(content, "utf8"), created: !existed };
   }
 
   async listDirectory(

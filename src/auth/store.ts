@@ -5,6 +5,7 @@ import { ensureDir, getStateDir, readJsonIfExists, writeSecureJson } from "../co
 
 export const SUPPORTED_SCOPES = [
   "workspace.read",
+  "workspace.write",
   "workspace.search",
   "git.read",
   "execution.read",
