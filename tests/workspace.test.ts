@@ -165,6 +165,36 @@ describe("read_file pagination", () => {
   });
 });
 
+describe("safe workspace mutations and images", () => {
+  it("reads supported images as base64", async () => {
+    fs.writeFileSync(path.join(root, "pixel.png"), Buffer.from("iVBORw0KGgo=", "base64"));
+    const result = await ws.readImage("pixel.png");
+    expect(result.mimeType).toBe("image/png");
+    expect(result.data).toBe("iVBORw0KGgo=");
+  });
+
+  it("updates only unique exact text", async () => {
+    write(root, "edit.txt", "before\n");
+    await ws.updateText("edit.txt", "before", "after");
+    expect(fs.readFileSync(path.join(root, "edit.txt"), "utf8")).toBe("after\n");
+    write(root, "duplicate.txt", "same same");
+    await expect(ws.updateText("duplicate.txt", "same", "x")).rejects.toMatchObject({ code: "TEXT_NOT_UNIQUE" });
+  });
+
+  it("updates nested JSON fields", async () => {
+    write(root, "settings.json", JSON.stringify({ app: { name: "old" }, keep: true }));
+    await ws.updateJson("settings.json", { "app.name": "new", "app.enabled": true });
+    expect(JSON.parse(fs.readFileSync(path.join(root, "settings.json"), "utf8"))).toEqual({ app: { name: "new", enabled: true }, keep: true });
+  });
+
+  it("creates source files without overwriting and moves them safely", async () => {
+    await ws.createSourceFile("generated/demo.ts", "export const demo = true;\n");
+    await expect(ws.createSourceFile("generated/demo.ts", "changed")).rejects.toMatchObject({ code: "FILE_EXISTS" });
+    await ws.moveFile("generated/demo.ts", "generated/renamed.ts");
+    expect(fs.existsSync(path.join(root, "generated/renamed.ts"))).toBe(true);
+  });
+});
+
 describe("workspace identity", () => {
   it("has a stable id and name", () => {
     const again = new Workspace(root);

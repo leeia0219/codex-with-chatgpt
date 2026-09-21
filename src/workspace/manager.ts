@@ -14,7 +14,9 @@ export type WorkspaceErrorCode =
   | "NOT_A_DIRECTORY"
   | "BINARY_FILE"
   | "FILE_TOO_LARGE"
-  | "FILE_EXISTS";
+  | "FILE_EXISTS"
+  | "TEXT_NOT_FOUND"
+  | "TEXT_NOT_UNIQUE";
 
 export class WorkspaceError extends Error {
   constructor(
@@ -46,6 +48,13 @@ export interface WriteFileResult {
   format: string;
   bytesWritten: number;
   created: boolean;
+}
+
+export interface ReadImageResult {
+  path: string;
+  mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  sizeBytes: number;
+  data: string;
 }
 
 export interface DirEntry {
@@ -282,6 +291,103 @@ export class Workspace {
     await fs.promises.mkdir(path.dirname(abs), { recursive: true });
     await fs.promises.writeFile(abs, content, { encoding: "utf8", flag: "w" });
     return { path: rel, format: normalizedFormat, bytesWritten: Buffer.byteLength(content, "utf8"), created: !existed };
+  }
+
+  async readImage(requested: string, maxBytes = 5 * 1024 * 1024): Promise<ReadImageResult> {
+    const { abs, rel } = this.resolve(requested);
+    const mimeByExtension: Record<string, ReadImageResult["mimeType"]> = {
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".webp": "image/webp",
+      ".gif": "image/gif",
+    };
+    const mimeType = mimeByExtension[path.extname(rel).toLowerCase()];
+    if (!mimeType) throw new WorkspaceError("INVALID_PATH", "Unsupported image format");
+    let stat: fs.Stats;
+    try {
+      stat = await fs.promises.stat(abs);
+    } catch {
+      throw new WorkspaceError("FILE_NOT_FOUND", `File not found: ${rel}`);
+    }
+    if (!stat.isFile()) throw new WorkspaceError("NOT_A_FILE", `Not a regular file: ${rel}`);
+    if (stat.size > maxBytes) throw new WorkspaceError("FILE_TOO_LARGE", `Image exceeds ${maxBytes} bytes: ${rel}`);
+    return { path: rel, mimeType, sizeBytes: stat.size, data: (await fs.promises.readFile(abs)).toString("base64") };
+  }
+
+  async updateText(requested: string, oldText: string, newText: string): Promise<WriteFileResult> {
+    if (!oldText) throw new WorkspaceError("INVALID_PATH", "old_text must not be empty");
+    const { abs, rel } = this.resolve(requested);
+    const content = await fs.promises.readFile(abs, "utf8").catch(() => {
+      throw new WorkspaceError("FILE_NOT_FOUND", `File not found: ${rel}`);
+    });
+    const first = content.indexOf(oldText);
+    if (first < 0) throw new WorkspaceError("TEXT_NOT_FOUND", `old_text was not found in ${rel}`);
+    if (content.indexOf(oldText, first + oldText.length) >= 0) {
+      throw new WorkspaceError("TEXT_NOT_UNIQUE", `old_text occurs more than once in ${rel}`);
+    }
+    const updated = content.slice(0, first) + newText + content.slice(first + oldText.length);
+    await fs.promises.writeFile(abs, updated, "utf8");
+    return { path: rel, format: "text", bytesWritten: Buffer.byteLength(updated), created: false };
+  }
+
+  async updateJson(requested: string, updates: Record<string, unknown>): Promise<WriteFileResult> {
+    const { abs, rel } = this.resolve(requested);
+    if (!rel.toLowerCase().endsWith(".json")) throw new WorkspaceError("INVALID_PATH", "update_json requires a .json file");
+    const raw = await fs.promises.readFile(abs, "utf8").catch(() => {
+      throw new WorkspaceError("FILE_NOT_FOUND", `File not found: ${rel}`);
+    });
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    for (const [dottedPath, nextValue] of Object.entries(updates)) {
+      const parts = dottedPath.split(".").filter(Boolean);
+      if (parts.length === 0 || parts.some((part) => part === "__proto__" || part === "constructor" || part === "prototype")) {
+        throw new WorkspaceError("INVALID_PATH", `Invalid JSON field path: ${dottedPath}`);
+      }
+      let cursor: Record<string, unknown> = value;
+      for (const part of parts.slice(0, -1)) {
+        const child = cursor[part];
+        if (!child || typeof child !== "object" || Array.isArray(child)) cursor[part] = {};
+        cursor = cursor[part] as Record<string, unknown>;
+      }
+      cursor[parts.at(-1)!] = nextValue;
+    }
+    const output = JSON.stringify(value, null, 2) + "\n";
+    await fs.promises.writeFile(abs, output, "utf8");
+    return { path: rel, format: "json", bytesWritten: Buffer.byteLength(output), created: false };
+  }
+
+  async createSourceFile(requested: string, content: string): Promise<WriteFileResult> {
+    const { abs, rel } = this.resolve(requested);
+    if (!/\.(c|cc|cpp|cs|css|go|h|hpp|html|java|js|jsx|kt|php|py|rb|rs|sh|sql|swift|ts|tsx|vue|xml)$/i.test(rel)) {
+      throw new WorkspaceError("INVALID_PATH", "Unsupported source file extension");
+    }
+    try {
+      await fs.promises.stat(abs);
+      throw new WorkspaceError("FILE_EXISTS", `File already exists: ${rel}`);
+    } catch (error) {
+      if (error instanceof WorkspaceError) throw error;
+    }
+    await fs.promises.mkdir(path.dirname(abs), { recursive: true });
+    await fs.promises.writeFile(abs, content, { encoding: "utf8", flag: "wx" });
+    return { path: rel, format: "source", bytesWritten: Buffer.byteLength(content), created: true };
+  }
+
+  async moveFile(from: string, to: string): Promise<{ from: string; to: string }> {
+    const source = this.resolve(from);
+    const destination = this.resolve(to);
+    const stat = await fs.promises.stat(source.abs).catch(() => {
+      throw new WorkspaceError("FILE_NOT_FOUND", `File not found: ${source.rel}`);
+    });
+    if (!stat.isFile()) throw new WorkspaceError("NOT_A_FILE", `Not a regular file: ${source.rel}`);
+    try {
+      await fs.promises.stat(destination.abs);
+      throw new WorkspaceError("FILE_EXISTS", `Destination already exists: ${destination.rel}`);
+    } catch (error) {
+      if (error instanceof WorkspaceError) throw error;
+    }
+    await fs.promises.mkdir(path.dirname(destination.abs), { recursive: true });
+    await fs.promises.rename(source.abs, destination.abs);
+    return { from: source.rel, to: destination.rel };
   }
 
   async listDirectory(

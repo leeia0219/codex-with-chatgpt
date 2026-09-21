@@ -58,7 +58,7 @@ beforeAll(async () => {
   });
   const tokens = bridge.authStore.issueTokens({
     clientId: "it-client",
-    scopes: ["workspace.read", "workspace.write", "workspace.search", "git.read", "execution.read"],
+    scopes: ["workspace.read", "workspace.write", "workspace.search", "workspace.execute", "git.read", "git.write", "execution.read"],
   });
   accessToken = tokens.accessToken;
 
@@ -80,21 +80,29 @@ describe("MCP tools over Streamable HTTP", () => {
     const { tools } = await client.listTools();
     const names = tools.map((tool) => tool.name).sort();
     expect(names).toEqual([
+      "create_source_file",
       "execution_output",
       "execution_summary",
+      "git_commit",
       "git_diff",
+      "git_stage",
       "git_status",
       "github_list_directory",
       "github_read_file",
       "github_repository",
       "list_directory",
+      "move_file",
       "read_file",
+      "read_image",
+      "run_task",
       "search_workspace",
       "test_status",
+      "update_json",
+      "update_text",
       "workspace_info",
       "write_file",
     ]);
-    for (const forbidden of ["delete_file", "execute_shell", "git_commit", "install_package"]) {
+    for (const forbidden of ["delete_file", "execute_shell", "git_push", "install_package"]) {
       expect(names).not.toContain(forbidden);
     }
 
@@ -111,6 +119,14 @@ describe("MCP tools over Streamable HTTP", () => {
     expectToolOutputSchema(tools, "execution_summary", ["records"]);
     expectToolOutputSchema(tools, "execution_output", ["action", "items", "text"]);
     expectToolOutputSchema(tools, "write_file", ["path", "format", "bytesWritten", "created"]);
+    expectToolOutputSchema(tools, "read_image", ["path", "mimeType", "sizeBytes"]);
+    expectToolOutputSchema(tools, "update_text", ["path", "bytesWritten"]);
+    expectToolOutputSchema(tools, "update_json", ["path", "bytesWritten"]);
+    expectToolOutputSchema(tools, "create_source_file", ["path", "created"]);
+    expectToolOutputSchema(tools, "move_file", ["from", "to"]);
+    expectToolOutputSchema(tools, "run_task", ["action", "exitCode", "stdout", "stderr"]);
+    expectToolOutputSchema(tools, "git_stage", ["staged"]);
+    expectToolOutputSchema(tools, "git_commit", ["commit", "message"]);
   });
 
   it("reports GitHub as unconfigured when the workspace has no origin", async () => {

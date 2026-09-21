@@ -7,7 +7,9 @@ export const SUPPORTED_SCOPES = [
   "workspace.read",
   "workspace.write",
   "workspace.search",
+  "workspace.execute",
   "git.read",
+  "git.write",
   "execution.read",
   "offline_access",
 ] as const;

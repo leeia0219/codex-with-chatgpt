@@ -1,10 +1,10 @@
-# Codex with ChatGPT · camera-relate-v3
+# Codex with ChatGPT · camera_relate
 
 这是 [XiaoDuoYa/codex-with-chatgpt](https://github.com/XiaoDuoYa/codex-with-chatgpt) 的个人维护分支，服务于 `camera_relate` 项目，也可以安装到其他本地 Git 工作区。
 
-原版让 ChatGPT 通过只读连接读取 Codex 的本地工作区，并负责规划和复核；Codex 负责修改文件、运行命令和测试。v3 保留这套分工，增加了 **GitHub 已提交内容的只读读取能力**，并记录了我们在 Windows、ChatGPT Project 和 Cloudflare 固定域名环境中实际遇到的问题。
+原版让 ChatGPT 读取 Codex 的本地工作区，并负责规划和复核；Codex 仍是主要执行者。本分支增加了 **GitHub 已提交内容的只读读取能力**与受边界保护的本地操作，并记录了 Windows、ChatGPT Project 和 Cloudflare 固定域名的实际配置经验。
 
-## v3 相对原版修改了什么
+## 相对原版修改了什么
 
 ### 1. 增加 GitHub 只读工具
 
@@ -49,7 +49,7 @@ Skill 会告诉 ChatGPT：
 需要：Git、Node.js 20+、pnpm、cloudflared，以及 Codex 桌面版。首次在 ChatGPT 中添加连接前，必须在 ChatGPT 的 **Settings → Security** 中开启 **Developer mode**。
 
 ```powershell
-git clone --branch camera-relate-v3 https://github.com/leeia0219/codex-with-chatgpt `
+git clone --branch main https://github.com/leeia0219/codex-with-chatgpt `
   "$HOME\codex-with-chatgpt"
 Set-Location "$HOME\codex-with-chatgpt"
 pnpm install
@@ -94,7 +94,7 @@ Copy-Item .\LOCAL_SETUP.example.md .\LOCAL_SETUP.md
 
 ### 为工作区创建 ChatGPT Project
 
-首次连接这个工作区时，在 ChatGPT 中新建一个 Project，名称使用工作区名称，例如 `camera_relate-v3`，并将记忆范围选择为 **仅限项目记忆（Project-only memory）**。在该 Project 中新建 **Chat** 对话，不要使用 **Work** 对话；然后在输入框中选择准确的 `Codex with ChatGPT · camera_relate-v3` App，并调用 `workspace_info` 验证连接到的是当前工作区。
+首次连接这个工作区时，在 ChatGPT 中新建一个 Project，名称使用稳定的工作区名称，例如 `camera_relate`，并将记忆范围选择为 **仅限项目记忆（Project-only memory）**。在该 Project 中新建 **Chat** 对话，不要使用 **Work** 对话；然后在输入框中选择准确的 `Codex with ChatGPT · camera_relate` App，并调用 `workspace_info` 验证连接到的是当前工作区。
 
 每个工作区只需要一个 Project。切换到另一个 ChatGPT 账号后，必须在新账号中重新创建 Project、开启 Project-only memory，并重新添加和授权 App。
 
@@ -103,7 +103,7 @@ Copy-Item .\LOCAL_SETUP.example.md .\LOCAL_SETUP.md
 一个工作区只使用：
 
 - 一个 ChatGPT Project；
-- 一个名称明确的 App，例如 `Codex with ChatGPT · camera_relate-v3`；
+- 一个名称固定的 App，例如 `Codex with ChatGPT · camera_relate`（不要附加 v4/v5）；
 - 一条 C2C 本地连接。
 
 在 ChatGPT Project 中新建 **Chat** 对话，在输入框选择准确的 C2C App，然后调用 `workspace_info`。返回的工作区名称、Git 分支和 HEAD 正确后才开始任务。
@@ -130,6 +130,20 @@ ChatGPT 读取代码并给出计划，Codex 执行，随后 ChatGPT 再读取真
 ```
 
 仅允许 `.md`、`.markdown`、`.txt`、`.json`、`.yaml` 和 `.yml` 文件；覆盖已有文件必须明确设置 `overwrite: true`。新增写入权限后需要重新授权 ChatGPT App。
+
+### 安全的扩展能力
+
+当前连接还提供：
+
+- `read_image`：读取工作区内不超过 5 MB 的 PNG、JPEG、WebP、GIF；
+- `update_text` / `update_json`：精确更新已有文本或 JSON 字段；
+- `create_source_file` / `move_file`：创建源码、移动或重命名文件，不覆盖已有目标；
+- `run_task`：只运行项目已定义的 `test`、`build`、`lint`、`typecheck`；
+- `git_stage` / `git_commit`：只做本地暂存和普通提交。
+
+明确不提供删除文件、任意 shell、安装依赖、切换或改写分支、`git push`、远端写入、敏感文件或工作区外路径读取。真正的 DOCX、PDF、表格等二进制文档仍由 Codex 的文档工具生成。
+
+首次升级到这些能力时，因为新增了 `workspace.execute` 和 `git.write` 权限，需要重新授权一次。以后只要固定域名、App 名称和权限集合不变，升级代码版本不应仅因版本号重新配对。
 
 ### 我们怎样操作 ChatGPT 对话
 
@@ -178,9 +192,9 @@ c2c-<workspace>-laptop.example.com
 
 如果当前网络会丢弃 Cloudflare 的 QUIC 连接，可在启动 C2C 前设置 `C2C_TUNNEL_PROTOCOL=http2`，然后重启 Bridge。未设置时继续使用 cloudflared 的默认传输方式。
 
-### 为什么 v3 不自动更新
+### 为什么本分支不自动更新
 
-这个分支含有原版没有的 GitHub 支持。自动拉取 `upstream/main` 可能覆盖这些修改，所以 v3 Skill 已删除自动检查和自动更新流程。需要同步上游时，维护者应先比较差异，再手工合并到 `camera-relate-v3` 并运行测试。
+这个分支含有原版没有的 GitHub 和安全写入支持。自动拉取 `upstream/main` 可能覆盖这些修改，所以 Skill 不自动合并上游。需要同步时，维护者应先比较差异，再手工合并到 `main` 并运行测试。
 
 ## 凭据和 Git 边界
 
@@ -214,7 +228,7 @@ pnpm test
 ## 上游与许可证
 
 - 上游项目：<https://github.com/XiaoDuoYa/codex-with-chatgpt>
-- v3 仓库：<https://github.com/leeia0219/codex-with-chatgpt>
+- 本分支仓库：<https://github.com/leeia0219/codex-with-chatgpt>
 - 许可证：[MIT](LICENSE)
 
 这是非官方社区分支，与 OpenAI、Microsoft 或 Cloudflare 无关联，也未获其背书。

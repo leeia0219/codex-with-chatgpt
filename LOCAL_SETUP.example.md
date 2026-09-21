@@ -33,6 +33,19 @@ in this file.
 - Project name: `<PROJECT_NAME>`
 - Conversation mode: `project`
 
+Keep both names stable and do not append release labels such as v4 or v5.
+After adding new OAuth scopes, authorize once again; ordinary code upgrades do
+not require pairing again when the hostname, App name and scopes are unchanged.
+
+## Enabled capability profile
+
+- Read workspace text, images, Git state and released execution output.
+- Create documentation and source files; precisely update text/JSON; move files.
+- Run only `test`, `build`, `lint` and `typecheck` package scripts.
+- Stage explicit paths and create local commits.
+- Never expose deletion, arbitrary shell, dependency installation, Git push,
+  remote writes, history rewriting, sensitive files or paths outside workspace.
+
 ## How Codex should use this memory
 
 1. Read `skill/SKILL.md` first.
@@ -57,4 +70,3 @@ in this file.
 Clone the repository, copy this template to `LOCAL_SETUP.md`, and enter that
 computer's paths. Cloudflare authorization and ChatGPT authorization are not
 stored in Git, so run the normal setup or repair flow on the new computer.
-
