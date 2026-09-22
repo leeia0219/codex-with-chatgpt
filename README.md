@@ -212,6 +212,28 @@ New-Item -ItemType SymbolicLink `
 
 ChatGPT 聊天里称为 **App**，管理页面地址和内部 ID 仍可能包含 `plugins` 或 `plugin_asdk_app`。它们通常是同一个对象的使用入口和管理入口。管理页中同名记录只有一条，就不是安装了两个。
 
+### 怎样彻底删除旧版 App / Plugin
+
+升级或重建 App 前，**必须使用 Delete 删除旧的开发者定义，不能只用 Uninstall**。Uninstall 只会解除当前账号的安装或连接，不会释放 Developer mode 下已创建 App 的名称；旧定义仍会出现在 **Plugins → Personal → Created by me**，用相同名称创建新版时就会发生名称冲突。
+
+**如果旧 App 当前未安装，必须先安装，再进入 Settings → Plugins 执行 Delete。** 未安装的 App 不会出现在可执行 Delete 的设置详情列表中。
+
+要永久删除自己创建的旧版本：
+
+1. 打开 ChatGPT 左侧栏的 **Plugins**。
+2. 在 Plugins 页面切换到 **Personal**。
+3. 找到 **Created by me** 区域，再找到要删除的旧 App，例如带有 `-v3`、`-v4`、`-local` 或 `-github` 后缀的条目。
+4. 观察该 App 卡片最右侧的按钮：
+   - 如果显示 **+**，说明尚未安装。先点击 **+** 完成安装；安装成功后，这个按钮会变成 **…**。
+   - 如果已经显示 **…**，说明已经安装，不需要再安装。
+5. 点击该 App 卡片最右侧的第一个 **…**，进入这个 App 的管理设置页。
+6. 在管理设置页顶部找到 App 名称，再点击名称右侧的第二个 **…**（**Plugin actions**）。
+7. 在弹出的菜单中点击 **Delete**。不要点击 **Uninstall**；Uninstall 只解除安装，旧开发者定义和名称占用仍然存在。
+8. 对每一个旧的 `camera_relate` 条目分别重复步骤 3–7。
+9. 返回 **Plugins → Personal → Created by me** 并刷新页面；确认旧 App 已从列表中消失。删除后旧对话可能继续显示缓存的 App 或 `App unavailable`，这是正常现象。
+
+`Delete` 会永久删除开发者创建的 App 定义及其旧 ID，不能撤销，但这是释放旧名称、避免升级时同名冲突所必需的步骤。确认旧条目全部消失后，只创建一个名称稳定的新版，例如 `Codex with ChatGPT · camera_relate`，不要再把 v4/v5 写进名称。随后在原 ChatGPT Project 中新建 Chat、选择新版 App，并调用 `workspace_info` 验证连接。
+
 ### 旧对话显示 App unavailable
 
 删除并重建 App 后，旧对话可能仍缓存旧 App 身份。管理页即使显示 Connected，旧对话仍可能提示 unavailable。
