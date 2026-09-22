@@ -88,6 +88,32 @@ Copy-Item .\LOCAL_SETUP.example.md .\LOCAL_SETUP.md
 模板中只能记录路径、名称和固定地址。Cloudflare credential、tunnel ID、token、
 配对码、cookie、私钥和证书不能写入该文件。
 
+### 升级后用 LOCAL_SETUP 快速恢复 camera_relate
+
+`LOCAL_SETUP.md` 是给 Codex 读取的本机配置记忆，不是可执行配置，也不保存授权凭据。它的作用是让新对话立即知道 C2C 安装路径、`camera_relate` 工作区、固定域名、App 名称和 ChatGPT Project，不再逐项询问。
+
+升级当前安装时，在 C2C 仓库运行：
+
+```powershell
+$c2cCheckout = "C:\Users\Admin\codex-with-chatgpt"
+$cameraRelate = "C:\path\to\camera_relate"
+
+Set-Location $c2cCheckout
+git pull --ff-only origin main
+pnpm install --frozen-lockfile
+pnpm build
+
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills\codex-with-chatgpt"
+Copy-Item .\skill\SKILL.md "$env:USERPROFILE\.codex\skills\codex-with-chatgpt\SKILL.md" -Force
+
+node .\bin\c2c.js sandbox-allow --json
+node .\bin\c2c.js doctor -w $cameraRelate --json
+```
+
+然后让 Codex 读取 `LOCAL_SETUP.md`，复用其中完全相同的固定域名、App 名称和 Project 名称，并在原 ChatGPT Project 的 Chat 对话中调用 `workspace_info` 验证。若 `doctor` 已正常且权限集合没变化，不删除 App、不重建 Project、也不重新配对；只有新增授权范围、令牌失效、切换 ChatGPT 账号，或诊断明确要求修复连接时才重新授权。
+
+首次换到另一台电脑时，Git 只能带走代码和 `LOCAL_SETUP.example.md`。需要在新电脑复制并填写新的 `LOCAL_SETUP.md`；Cloudflare 登录、ChatGPT 授权和运行状态仍需在新电脑完成一次。
+
 ### ChatGPT 设置要求
 
 在 ChatGPT 浏览器中打开 **Settings → Security**，开启 **Developer mode**，然后再创建或授权 `Codex with ChatGPT` App。切换到另一个 ChatGPT 账号后，需要在该账号中重新开启 Developer mode，并重新添加和授权 App；原账号的 Project、对话和连接不会自动转移。
@@ -115,6 +141,21 @@ Copy-Item .\LOCAL_SETUP.example.md .\LOCAL_SETUP.md
 ```
 
 ChatGPT 读取代码并给出计划，Codex 执行，随后 ChatGPT 再读取真实 diff 和测试记录进行复核。
+
+### 一个连接可以访问多少文件夹
+
+一个连接只绑定一个工作区根目录，但可以访问该根目录下任意数量的普通子目录。因此可以把一组互相信任的项目放在共同父目录下，并把父目录作为工作区：
+
+```text
+D:\camera-workspace\          ← 连接的工作区根目录
+├── camera_relate\
+├── camera_android\
+└── camera_docs\
+```
+
+随后使用 `-w "D:\camera-workspace"` 配置连接。代价是 ChatGPT 获得整个父目录的授权边界，工作区识别、Git 状态和搜索也会以这个父目录为上下文；不要选择用户主目录、磁盘根目录或混有私密资料的目录。
+
+不支持用 `ln -s`、Windows 符号链接或 `mklink /J` 把工作区外目录绕进来。C2C 会解析真实路径并拒绝越过工作区边界，避免链接指向 `.ssh`、凭据或其他项目。若目录彼此无关，正确做法是每个工作区各用一个固定名称的 App 和 Project；不要建立“无限文件夹”或整台磁盘级连接。
 
 ### 结构化写入文档
 

@@ -16,6 +16,11 @@ example file generic so it can be committed safely.
 - Git repository: `<OWNER/REPOSITORY>`
 - Git branch: `<DEFAULT_BRANCH>`
 
+One connector may cover unlimited normal subdirectories under this root. If
+several trusted projects should share one connector, set Workspace root to
+their dedicated common parent. Never use a drive root or user profile. Links,
+symlinks and Windows junctions that resolve outside this root remain blocked.
+
 ## Stable connection
 
 - Connection mode: `named`
@@ -64,6 +69,18 @@ not require pairing again when the hostname, App name and scopes are unchanged.
    after it returns the expected workspace.
 6. Treat local workspace tools as the source for current and uncommitted files.
    Use `github_*` only for committed and pushed content.
+
+## Fast upgrade on this computer
+
+1. Read the Installation and Workspace paths above instead of asking again.
+2. In the C2C checkout, fast-forward `origin/main`, install the locked
+   dependencies, build, and copy `skill/SKILL.md` to Installed Skill.
+3. Run `sandbox-allow`, then `doctor -w <Workspace root>`.
+4. Reuse the exact fixed hostname, App name and Project name. If doctor is
+   healthy and scopes did not change, do not delete the App, recreate the
+   Project or pair again.
+5. Reauthorize only when scopes changed, the token/account changed, or doctor
+   explicitly reports that the ChatGPT connection must be repaired.
 
 ## Moving to another computer
 
