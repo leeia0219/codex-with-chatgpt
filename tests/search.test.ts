@@ -1,14 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import { Workspace } from "../src/workspace/manager.js";
 import { searchWorkspace, resetRipgrepCache, findRipgrep } from "../src/workspace/search.js";
 import { makeTmpDir, cleanup, write } from "./helpers.js";
 
 let root: string;
 let ws: Workspace;
+let outside: string;
+let symlinkReady = false;
 const globMarker = "C2C_GLOB_MARKER";
 
 beforeAll(() => {
   root = makeTmpDir("search-ws");
+  outside = makeTmpDir("search-linked");
   write(root, "src/auth.ts", "export function login() { return 'needle-alpha'; }\n");
   write(root, "src/deep/nested.ts", `// needle-alpha appears here too\n${globMarker}\n`);
   write(root, "src/root.ts", `${globMarker}\n`);
@@ -19,11 +24,19 @@ beforeAll(() => {
   for (let i = 0; i < 30; i++) {
     write(root, `many/file-${i}.txt`, "needle-beta\nneedle-beta\n");
   }
+  write(outside, "linked.txt", "needle-linked\n");
+  try {
+    fs.symlinkSync(outside, path.join(root, "linked"), process.platform === "win32" ? "junction" : "dir");
+    symlinkReady = true;
+  } catch {
+    symlinkReady = false;
+  }
   ws = new Workspace(root);
 });
 
 afterAll(() => {
   cleanup(root);
+  cleanup(outside);
 });
 
 afterEach(() => {
@@ -89,5 +102,12 @@ describe.each(engines())("search engine: %s", (engine) => {
     const paths = result.matches.map((match) => match.path);
     expect(paths).toContain("src/auth.ts");
     expect(paths).not.toContain("README.md");
+  });
+
+  it("searches an external directory through a workspace symlink", async () => {
+    if (!symlinkReady) return;
+    configure();
+    const result = await searchWorkspace(ws, { query: "needle-linked", path: "linked" });
+    expect(result.matches.map((match) => match.path)).toContain("linked/linked.txt");
   });
 });

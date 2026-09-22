@@ -71,10 +71,11 @@ async function searchWithRipgrep(
   ws: Workspace,
   rgBin: string,
   searchAbs: string,
+  searchRel: string,
   opts: SearchOptions,
   limit: number
 ): Promise<SearchResult> {
-  const args = ["--json", "--max-filesize", "2M", "--max-count", "20"];
+  const args = ["--follow", "--json", "--max-filesize", "2M", "--max-count", "20"];
   if (!opts.regex) args.push("-F");
   args.push("--smart-case");
   if (opts.glob) args.push("-g", opts.glob);
@@ -97,8 +98,11 @@ async function searchWithRipgrep(
           data?: { path?: { text?: string }; line_number?: number; lines?: { text?: string } };
         };
         if (event.type !== "match" || !event.data?.path?.text) return;
-        const rel = path.relative(ws.root, event.data.path.text).split(path.sep).join("/");
+        const eventPath = path.resolve(event.data.path.text);
+        const fromSearch = path.relative(searchAbs, eventPath).split(path.sep).join("/");
+        const rel = searchRel ? [searchRel, fromSearch === "." ? "" : fromSearch].filter(Boolean).join("/") : path.relative(ws.root, eventPath).split(path.sep).join("/");
         if (rel.startsWith("..") || ws.ignoreRules.isHidden(rel)) return;
+        try { ws.resolve(rel); } catch { return; }
         matches.push({
           path: rel,
           line: event.data.line_number ?? 0,
@@ -118,6 +122,7 @@ async function searchWithRipgrep(
 async function searchWithNode(
   ws: Workspace,
   searchAbs: string,
+  searchRel: string,
   opts: SearchOptions,
   limit: number
 ): Promise<SearchResult> {
@@ -126,9 +131,15 @@ async function searchWithNode(
   const globRegex = opts.glob ? globToRegex(opts.glob) : null;
   const matches: SearchMatch[] = [];
   let truncated = false;
+  const visited = new Set<string>();
 
   const walk = async (dirAbs: string, dirRel: string): Promise<void> => {
     if (truncated) return;
+    let realDir: string;
+    try { realDir = await fs.promises.realpath(dirAbs); } catch { return; }
+    const visitKey = process.platform === "win32" || process.platform === "darwin" ? realDir.toLowerCase() : realDir;
+    if (visited.has(visitKey)) return;
+    visited.add(visitKey);
     let entries: fs.Dirent[];
     try {
       entries = await fs.promises.readdir(dirAbs, { withFileTypes: true });
@@ -139,17 +150,16 @@ async function searchWithNode(
       if (truncated) return;
       const childRel = dirRel ? `${dirRel}/${entry.name}` : entry.name;
       if (ws.ignoreRules.isHidden(childRel) || ws.ignoreRules.isHidden(childRel + "/")) continue;
-      const childAbs = path.join(dirAbs, entry.name);
-      if (entry.isDirectory()) {
+      let childAbs: string;
+      let stat: fs.Stats;
+      try {
+        childAbs = ws.resolve(childRel).abs;
+        stat = await fs.promises.stat(childAbs);
+      } catch { continue; }
+      if (stat.isDirectory()) {
         await walk(childAbs, childRel);
-      } else if (entry.isFile()) {
+      } else if (stat.isFile()) {
         if (globRegex && !globRegex.test(childRel)) continue;
-        let stat: fs.Stats;
-        try {
-          stat = await fs.promises.stat(childAbs);
-        } catch {
-          continue;
-        }
         if (stat.size > 2 * 1024 * 1024) continue;
         let content: string;
         try {
@@ -174,8 +184,7 @@ async function searchWithNode(
     }
   };
 
-  const startRel = path.relative(ws.root, searchAbs).split(path.sep).join("/");
-  await walk(searchAbs, startRel === "" ? "" : startRel);
+  await walk(searchAbs, searchRel);
   return { matches, matchCount: matches.length, truncated, engine: "node" };
 }
 
@@ -196,14 +205,14 @@ export async function searchWorkspace(ws: Workspace, opts: SearchOptions): Promi
     return { matches: [], matchCount: 0, truncated: false, engine: "node" };
   }
   const limit = Math.min(200, Math.max(1, Math.floor(opts.limit ?? 50)));
-  const { abs } = ws.resolve(opts.path ?? ".");
+  const { abs, rel } = ws.resolve(opts.path ?? ".");
   const rg = findRipgrep();
   if (rg) {
     try {
-      return await searchWithRipgrep(ws, rg, abs, opts, limit);
+      return await searchWithRipgrep(ws, rg, abs, rel, opts, limit);
     } catch {
       // fall through to node engine
     }
   }
-  return searchWithNode(ws, abs, opts, limit);
+  return searchWithNode(ws, abs, rel, opts, limit);
 }

@@ -133,9 +133,19 @@ export class Workspace {
     return c === r || c.startsWith(r + path.sep);
   }
 
+  private isSensitiveCanonical(candidate: string): boolean {
+    const parts = path.resolve(candidate).split(path.sep).filter(Boolean);
+    const start = parts[0]?.endsWith(":") ? 1 : 0;
+    for (let index = start; index < parts.length; index++) {
+      const suffix = parts.slice(index).join("/");
+      if (this.ignoreRules.isSensitive(suffix) || this.ignoreRules.isSensitive(suffix + "/")) return true;
+    }
+    return false;
+  }
+
   /**
    * Canonicalize a path by realpath-ing its deepest existing ancestor.
-   * Defends against symlink escapes even for not-yet-existing leaf segments.
+   * This follows symlinks/junctions and also handles not-yet-existing leaves.
    */
   private canonicalize(abs: string): string {
     let current = abs;
@@ -154,8 +164,8 @@ export class Workspace {
   }
 
   /**
-   * Resolve an untrusted path to a canonical absolute path inside the workspace.
-   * Throws PATH_OUTSIDE_WORKSPACE or ACCESS_DENIED_SENSITIVE_FILE.
+   * Resolve a lexical path inside the workspace to its canonical target.
+   * Links may target external paths; direct external input and traversal do not.
    */
   resolve(requested: string, opts: { allowSensitive?: boolean } = {}): { abs: string; rel: string } {
     if (typeof requested !== "string" || requested.includes("\0")) {
@@ -169,19 +179,19 @@ export class Workspace {
     p = p.replace(/^workspace:\/*/i, "");
     if (p === "") p = ".";
 
-    const abs = path.resolve(this.root, p);
-    const canonical = this.canonicalize(abs);
-    if (!this.contains(canonical)) {
+    const lexical = path.resolve(this.root, p);
+    if (!this.contains(lexical)) {
       throw new WorkspaceError(
         "PATH_OUTSIDE_WORKSPACE",
-        `Path resolves outside the connected workspace: ${requested}`
+        `Path is outside the connected workspace: ${requested}`
       );
     }
-    const rel = path.relative(this.root, canonical).split(path.sep).join("/");
+    const canonical = this.canonicalize(lexical);
+    const rel = path.relative(this.root, lexical).split(path.sep).join("/");
     if (rel.startsWith("..")) {
-      throw new WorkspaceError("PATH_OUTSIDE_WORKSPACE", `Path resolves outside the connected workspace: ${requested}`);
+      throw new WorkspaceError("PATH_OUTSIDE_WORKSPACE", `Path is outside the connected workspace: ${requested}`);
     }
-    if (!opts.allowSensitive && rel !== "" && this.ignoreRules.isSensitive(rel)) {
+    if (!opts.allowSensitive && rel !== "" && (this.ignoreRules.isSensitive(rel) || this.isSensitiveCanonical(canonical))) {
       throw new WorkspaceError(
         "ACCESS_DENIED_SENSITIVE_FILE",
         `ACCESS_DENIED_SENSITIVE_FILE: '${rel}' matches the sensitive-file policy and cannot be read.`
@@ -409,7 +419,11 @@ export class Workspace {
     const offset = Math.max(0, Math.floor(opts.offset ?? 0));
 
     const all: DirEntry[] = [];
+    const visited = new Set<string>();
     const walk = async (dirAbs: string, dirRel: string, level: number): Promise<void> => {
+      const visitKey = normCase(this.canonicalize(dirAbs));
+      if (visited.has(visitKey)) return;
+      visited.add(visitKey);
       let entries: fs.Dirent[];
       try {
         entries = await fs.promises.readdir(dirAbs, { withFileTypes: true });
@@ -424,17 +438,19 @@ export class Workspace {
       for (const entry of entries) {
         const childRel = dirRel ? `${dirRel}/${entry.name}` : entry.name;
         if (this.ignoreRules.isHidden(childRel) || this.ignoreRules.isHidden(childRel + "/")) continue;
-        if (entry.isDirectory()) {
+        let child: { abs: string; rel: string };
+        let childStat: fs.Stats;
+        try {
+          child = this.resolve(childRel);
+          childStat = await fs.promises.stat(child.abs);
+        } catch {
+          continue;
+        }
+        if (childStat.isDirectory()) {
           all.push({ path: childRel + "/", type: "dir" });
-          if (level < depth) await walk(path.join(dirAbs, entry.name), childRel, level + 1);
-        } else if (entry.isFile()) {
-          let size: number | undefined;
-          try {
-            size = (await fs.promises.stat(path.join(dirAbs, entry.name))).size;
-          } catch {
-            size = undefined;
-          }
-          all.push({ path: childRel, type: "file", sizeBytes: size });
+          if (level < depth) await walk(child.abs, childRel, level + 1);
+        } else if (childStat.isFile()) {
+          all.push({ path: childRel, type: "file", sizeBytes: childStat.size });
         }
         if (all.length >= offset + limit + 2000) return; // hard cap for huge trees
       }

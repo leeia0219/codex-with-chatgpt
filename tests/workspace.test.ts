@@ -21,6 +21,7 @@ beforeAll(() => {
   write(root, "keys/id_rsa", "PRIVATE KEY\n");
   write(root, "nested/.ssh/config", "Host *\n");
   write(outside, "secret.txt", "outside data\n");
+  write(outside, ".env", "OUTSIDE_SECRET=blocked\n");
   write(root, ".c2cignore", "private-notes/\n");
   write(root, "private-notes/todo.md", "secret notes\n");
   // symlink pointing outside the workspace (needs symlink privileges, e.g.
@@ -74,24 +75,23 @@ describe("path containment", () => {
     expect(() => ws.resolve("hello.txt\0.png")).toThrowError(WorkspaceError);
   });
 
-  it("rejects symlinked file escaping the workspace", () => {
+  it("allows a symlink inside the workspace to an external file", async () => {
     if (!symlinksReady) return; // symlink privilege unavailable
-    try {
-      ws.resolve("link-out.txt");
-      expect.unreachable("should have thrown");
-    } catch (error) {
-      expect((error as WorkspaceError).code).toBe("PATH_OUTSIDE_WORKSPACE");
-    }
+    const resolved = ws.resolve("link-out.txt");
+    expect(resolved.rel).toBe("link-out.txt");
+    expect((await ws.readFile("link-out.txt")).content).toContain("outside data");
   });
 
-  it("rejects paths through a symlinked directory escaping the workspace", () => {
+  it("allows paths through a symlinked external directory", async () => {
     if (!symlinksReady) return; // symlink privilege unavailable
-    try {
-      ws.resolve("dir-out/secret.txt");
-      expect.unreachable("should have thrown");
-    } catch (error) {
-      expect((error as WorkspaceError).code).toBe("PATH_OUTSIDE_WORKSPACE");
-    }
+    expect((await ws.readFile("dir-out/secret.txt")).content).toContain("outside data");
+    const listing = await ws.listDirectory(".", { depth: 2, limit: 500 });
+    expect(listing.entries.map((entry) => entry.path)).toContain("dir-out/secret.txt");
+  });
+
+  it("still blocks sensitive real targets reached through a symlink", () => {
+    if (!symlinksReady) return;
+    expect(() => ws.resolve("dir-out/.env")).toThrowError(/ACCESS_DENIED_SENSITIVE_FILE/);
   });
 });
 

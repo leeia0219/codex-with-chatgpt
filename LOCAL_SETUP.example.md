@@ -16,10 +16,12 @@ example file generic so it can be committed safely.
 - Git repository: `<OWNER/REPOSITORY>`
 - Git branch: `<DEFAULT_BRANCH>`
 
-One connector may cover unlimited normal subdirectories under this root. If
-several trusted projects should share one connector, set Workspace root to
-their dedicated common parent. Never use a drive root or user profile. Links,
-symlinks and Windows junctions that resolve outside this root remain blocked.
+One connector may cover unlimited normal subdirectories under this root. It
+also follows symlinks and Windows junctions placed inside the workspace,
+including links to external folders, without an extra allowlist. Direct
+external paths and `..` traversal remain blocked. Treat every link target as
+part of the connector's authorization boundary; never link a drive root, user
+profile, credential directory or other secret-bearing location.
 
 ## Stable connection
 

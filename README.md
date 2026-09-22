@@ -155,7 +155,19 @@ D:\camera-workspace\          ← 连接的工作区根目录
 
 随后使用 `-w "D:\camera-workspace"` 配置连接。代价是 ChatGPT 获得整个父目录的授权边界，工作区识别、Git 状态和搜索也会以这个父目录为上下文；不要选择用户主目录、磁盘根目录或混有私密资料的目录。
 
-不支持用 `ln -s`、Windows 符号链接或 `mklink /J` 把工作区外目录绕进来。C2C 会解析真实路径并拒绝越过工作区边界，避免链接指向 `.ssh`、凭据或其他项目。若目录彼此无关，正确做法是每个工作区各用一个固定名称的 App 和 Project；不要建立“无限文件夹”或整台磁盘级连接。
+也支持在工作区内使用 `ln -s`、Windows 符号链接或 `mklink /J` 指向外部文件夹，不需要额外白名单配置。ChatGPT 使用的是工作区内的链接路径；直接提交工作区外绝对路径或 `..` 穿越仍会被拒绝，`.env`、`.ssh`、私钥等敏感路径会同时检查链接路径和真实目标。
+
+```powershell
+# 目录 Junction（通常不需要管理员权限）
+cmd /c mklink /J "D:\camera-workspace\shared" "E:\shared-camera-assets"
+
+# PowerShell 符号链接（系统可能要求管理员权限或开发者模式）
+New-Item -ItemType SymbolicLink `
+  -Path "D:\camera-workspace\docs-link" `
+  -Target "E:\camera-docs"
+```
+
+注意：这等同于主动把链接目标加入该连接的授权范围。不要链接用户主目录、磁盘根目录、`.ssh`、Cloudflare/GitHub 凭据目录或其他含秘密的目录。删除链接只会移除入口；不要使用会递归删除目标内容的命令。
 
 ### 结构化写入文档
 
