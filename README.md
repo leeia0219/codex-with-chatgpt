@@ -167,6 +167,34 @@ node .\bin\c2c.js doctor -w $cameraRelate --json
 
 最后进入原 ChatGPT Project，**新建一个 Chat 对话**，选择稳定名称的新版 App，并调用 `workspace_info`。只有返回的工作区名称确实是 `camera_relate`，升级才算完成。旧对话可能仍缓存已删除的 App ID，因此不能只看管理页的 Connected 状态。
 
+#### 节省 token：本机脚本读取配置并取得配对码
+
+不需要把 `LOCAL_SETUP.md` 或 `doctor --json` 的完整输出贴给 ChatGPT。仓库提供两个只在本机运行的 PowerShell 脚本：
+
+- `scripts\Read-C2CLocalSetup.ps1`：读取并检查 `LOCAL_SETUP.md`，返回结构化配置；
+- `scripts\Get-C2CPairingCode.ps1`：读取上述配置，静默运行 `doctor` 修复固定连接，然后只输出一次性配对码。
+
+在仓库根目录运行：
+
+```powershell
+# 检查脚本从 LOCAL_SETUP.md 读取到的路径、名称和固定地址
+.\scripts\Read-C2CLocalSetup.ps1
+
+# 授权网页已经显示配对码输入框后，再运行；终端只显示验证码
+.\scripts\Get-C2CPairingCode.ps1
+
+# 可选：同时复制到 Windows 剪贴板
+.\scripts\Get-C2CPairingCode.ps1 -CopyToClipboard
+```
+
+脚本默认先执行 `doctor`，适合固定域名第一次打不开后的重试。如果刚刚已经确认 `doctor` 全部正常，可以用 `-SkipDoctor` 更快取得配对码：
+
+```powershell
+.\scripts\Get-C2CPairingCode.ps1 -SkipDoctor -CopyToClipboard
+```
+
+配对码只有在浏览器已经出现输入框时才生成，每次生成都会使之前的配对码失效。脚本不会把配对码写入 `LOCAL_SETUP.md`、日志或 Git；不要把终端中的配对码发给其他人。
+
 首次换到另一台电脑时，Git 只能带走代码和 `LOCAL_SETUP.example.md`。需要在新电脑复制并填写新的 `LOCAL_SETUP.md`；Cloudflare 登录、ChatGPT 授权和运行状态仍需在新电脑完成一次。
 
 ### ChatGPT 设置要求
