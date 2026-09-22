@@ -92,7 +92,25 @@ Copy-Item .\LOCAL_SETUP.example.md .\LOCAL_SETUP.md
 
 `LOCAL_SETUP.md` 是给 Codex 读取的本机配置记忆，不是可执行配置，也不保存授权凭据。它的作用是让新对话立即知道 C2C 安装路径、`camera_relate` 工作区、固定域名、App 名称和 ChatGPT Project，不再逐项询问。
 
-升级当前安装时，在 C2C 仓库运行：
+#### 完整升级顺序
+
+不要先删除旧 App。按下面顺序操作，不能跳过准备步骤。
+
+1. **先把当前可用信息写入 `LOCAL_SETUP.md`。** 至少记录：
+   - C2C checkout 路径；
+   - 工作区名称和绝对路径；
+   - GitHub repository 与分支；
+   - 连接模式（固定域名应为 `named`）；
+   - Cloudflare zone、固定 hostname 和完整 MCP URL；
+   - 当前旧 App 的准确名称；
+   - ChatGPT Project 名称和对话模式。
+2. 确认 `LOCAL_SETUP.md` 已被 Git 忽略，并且没有 token、credential、tunnel ID、配对码、cookie、私钥或证书。
+3. 如果只是代码升级，固定地址、App 名称和权限都没有变化，保留原 App 即可。以下情况才需要删除并重建：旧 App 名称带 v3/v4/v5 等版本后缀、要改成稳定名称、授权范围发生变化、切换 ChatGPT 账号，或诊断明确要求重建。
+4. 需要重建时，按照下文“怎样彻底删除旧版 App / Plugin”的逐步流程，对旧 App 执行 **Delete**。不能只执行 Uninstall。确认 **Created by me** 中旧名称消失后再继续。
+5. 将 `LOCAL_SETUP.md` 的 App 名称更新为最终稳定名称，例如 `Codex with ChatGPT · camera_relate`；以后升级不要再给名称增加版本号。
+6. 更新、构建并检查本地安装。
+
+在 C2C 仓库运行：
 
 ```powershell
 $c2cCheckout = "C:\Users\Admin\codex-with-chatgpt"
@@ -102,6 +120,7 @@ Set-Location $c2cCheckout
 git pull --ff-only origin main
 pnpm install --frozen-lockfile
 pnpm build
+pnpm test
 
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills\codex-with-chatgpt"
 Copy-Item .\skill\SKILL.md "$env:USERPROFILE\.codex\skills\codex-with-chatgpt\SKILL.md" -Force
@@ -110,7 +129,43 @@ node .\bin\c2c.js sandbox-allow --json
 node .\bin\c2c.js doctor -w $cameraRelate --json
 ```
 
-然后让 Codex 读取 `LOCAL_SETUP.md`，复用其中完全相同的固定域名、App 名称和 Project 名称，并在原 ChatGPT Project 的 Chat 对话中调用 `workspace_info` 验证。若 `doctor` 已正常且权限集合没变化，不删除 App、不重建 Project、也不重新配对；只有新增授权范围、令牌失效、切换 ChatGPT 账号，或诊断明确要求修复连接时才重新授权。
+`doctor` 必须确认本地服务、授权端点和固定地址都正常。固定域名短暂离线时先让 `doctor` 修复，不要改用临时地址。
+
+#### 删除旧 App 后创建并连接新版
+
+1. 打开 ChatGPT **Plugins → Personal**，点击 **Create app**。
+2. 填写：
+   - **Name**：`LOCAL_SETUP.md` 中的稳定 App 名称；
+   - **Description**：`Securely connect ChatGPT to the current Codex workspace for planning and review.`；
+   - **Server URL**：`LOCAL_SETUP.md` 中的固定 MCP URL；
+   - **Authentication**：`OAuth`。
+3. 勾选风险确认并点击 **Create**。创建后只保留这一条稳定名称的 App。
+4. 点击 **Sign in with ...**。只有配对输入页已经显示时，才运行下面的命令生成新配对码；不要提前生成：
+
+   ```powershell
+   node .\bin\c2c.js pair -w $cameraRelate --json
+   ```
+
+5. 输入新配对码并点击 **Connect**。返回 ChatGPT 后，应看到连接成功提示、Primary 账户和工具列表。
+
+#### 第一次授权页面打不开时怎样重试
+
+固定域名刚启动或安全连接正在重建时，第一次点击 **Sign in with ...** 可能打开 `This site can't be reached` / `ERR_CONNECTION_CLOSED`。这不代表新 App 配置错误，也不需要重新创建。
+
+1. **不要删除刚创建的新 App，不要创建同名副本，也不要改 Server URL。**
+2. 回到 C2C 仓库重新运行：
+
+   ```powershell
+   node .\bin\c2c.js doctor -w $cameraRelate --json
+   ```
+
+3. 如果输出表示已重新建立安全连接，等待命令完成，并确认固定域名、工作区、本地服务和授权检查均正常。
+4. 回到 ChatGPT **Plugins → Personal → Created by me**，找到刚才创建的同一个 App。
+5. 如果卡片右侧是 **…**，点击 **… → Manage**；进入设置后点击 **Connect another account** 或 **Connection → Connect**。
+6. 再次点击 **Sign in with ...**。旧的失败授权标签页可以关闭；只继续最新一次授权。
+7. 配对输入页成功显示后，再生成新的配对码并完成连接。过期或旧授权尝试的配对码不要重复使用。
+
+最后进入原 ChatGPT Project，**新建一个 Chat 对话**，选择稳定名称的新版 App，并调用 `workspace_info`。只有返回的工作区名称确实是 `camera_relate`，升级才算完成。旧对话可能仍缓存已删除的 App ID，因此不能只看管理页的 Connected 状态。
 
 首次换到另一台电脑时，Git 只能带走代码和 `LOCAL_SETUP.example.md`。需要在新电脑复制并填写新的 `LOCAL_SETUP.md`；Cloudflare 登录、ChatGPT 授权和运行状态仍需在新电脑完成一次。
 
