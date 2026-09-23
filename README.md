@@ -211,6 +211,24 @@ node .\bin\c2c.js doctor -w $cameraRelate --json
 6. 再次点击 **Sign in with ...**。旧的失败授权标签页可以关闭；只继续最新一次授权。
 7. 配对输入页成功显示后，再生成新的配对码并完成连接。过期或旧授权尝试的配对码不要重复使用。
 
+#### TUN / Fake-IP 环境中的 `198.18.*` 地址
+
+如果电脑使用 Clash、Mihomo 或其他 TUN/fake-IP 网络，`api.cloudflare.com` 解析为 `198.18.0.0/15`（例如 `198.18.0.214`）可能只是本机网络工具的正常虚拟映射。**不要仅凭 `198.18.*` 判断 DNS 错误，也不要因此修改固定域名、删除 App、重建 tunnel 或强制设置代理。**
+
+应按实际连通结果判断：
+
+```powershell
+cloudflared tunnel list
+cloudflared tunnel info <LOCAL_SETUP 对应的 tunnel 名称或 ID>
+curl.exe -I https://<LOCAL_SETUP 中的固定 hostname>/mcp
+```
+
+- `tunnel list/info` 能看到活动 connector，说明 cloudflared 已连接 Cloudflare；
+- 固定 `/mcp` 地址返回 `401 Unauthorized` 是正确结果，表示 tunnel、Bridge 和 OAuth 入口均可访问，只是该测试请求没有授权；
+- 只有连接超时、没有活动 connector，或者固定地址无法返回 HTTP 响应时，才继续排查网络。
+
+如果 `doctor` 卡在“按名称查询 tunnel”，但 `cloudflared tunnel list` 本身正常，可以复用 `%USERPROFILE%\.cloudflared` 中已有的 credential，按现有 tunnel ID 直接运行同一个 named tunnel，并把 origin 指向 `LOCAL_SETUP.md` 对应 workspace 的 Bridge 端口。不要创建第二个 tunnel；credential 文件和 tunnel ID 也不要写入 README、`LOCAL_SETUP.md` 或 Git。
+
 最后进入原 ChatGPT Project，**新建一个 Chat 对话**，选择稳定名称的新版 App，并调用 `workspace_info`。只有返回的工作区名称确实是 `camera_relate`，升级才算完成。旧对话可能仍缓存已删除的 App ID，因此不能只看管理页的 Connected 状态。
 
 #### 节省 token：本机脚本读取配置并取得配对码
