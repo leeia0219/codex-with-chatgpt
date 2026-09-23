@@ -44,6 +44,52 @@ Skill 会告诉 ChatGPT：
 
 固定域名能力来自原版；v3 新增的是我们实际使用后的说明和跨电脑注意事项。详见 [docs/cloudflare-named-connection.md](docs/cloudflare-named-connection.md)。
 
+### 6. Clash/Mihomo：让 Cloudflare Tunnel 走可用的 IPv4 路径
+
+Cloudflare Tunnel 的 `http2` 传输仍然连接 Cloudflare 边缘的远端 TCP `7844`，并不会改用 HTTPS `443`。如果本机使用 Clash/Mihomo TUN，建议在当前生效的 profile script 中把 `cloudflared` 和 `7844` 放到同一个可用代理组，并保留 `argotunnel.com` 的 Fake-IP 排除：
+
+```javascript
+function main(config) {
+  const proxy = "⚡ 自动选择"; // 换成当前配置中真实存在的代理组名称
+  const rules = Array.isArray(config.rules) ? config.rules : [];
+
+  config.rules = rules.filter((rule) =>
+    rule !== `DST-PORT,7844,${proxy}` &&
+    rule !== `PROCESS-NAME,cloudflared.exe,${proxy}`
+  );
+  config.rules.unshift(
+    `DST-PORT,7844,${proxy}`,
+    `PROCESS-NAME,cloudflared.exe,${proxy}`
+  );
+
+  config.dns = config.dns || {};
+  const fakeIpFilter = Array.isArray(config.dns["fake-ip-filter"])
+    ? config.dns["fake-ip-filter"]
+    : [];
+  if (!fakeIpFilter.includes("+.argotunnel.com")) {
+    fakeIpFilter.unshift("+.argotunnel.com");
+  }
+  config.dns["fake-ip-filter"] = fakeIpFilter;
+  return config;
+}
+```
+
+规则必须放在 `MATCH`、`GEOIP` 或其他兜底规则之前。`DOMAIN-SUFFIX,argotunnel.com,DIRECT` 只控制按域名识别的连接；Cloudflared 往往先解析到 `198.41.*` 再按 IP 连接，所以仅添加域名规则可能仍会直连失败。不要把脚本写入 Clash 生成的临时合并文件；修改 profile script 后重新加载 Clash 核心，并确认代理组不是 `DIRECT`。
+
+如果代理订阅同时返回 IPv6 和 IPv4 节点，优先使用有 IPv4 出口的节点。IPv6 节点不会和本机端口冲突，但 IPv6-only 出口可能无法转发 Cloudflare 的 IPv4 `198.41.*:7844`，表现为 `TLS handshake with edge error`、`EOF` 或超时。已验证的恢复方式是关闭 Clash/Mihomo 的 IPv6（全局配置通常为 `ipv6: false`），重新加载核心，再重启 C2C Bridge。保留 `C2C_TUNNEL_PROTOCOL=http2` 可避免 QUIC/UDP 7844 被网络丢弃，但它仍需要 TCP 7844。
+
+排查时不要只看本机 `7844` 是否被监听；Bridge 不需要监听这个端口，它只建立出站连接。可以这样验证：
+
+```powershell
+Resolve-DnsName region1.v2.argotunnel.com
+Resolve-DnsName region2.v2.argotunnel.com
+Test-NetConnection 198.41.200.33 -Port 7844
+node .\bin\c2c.js status -w "C:\path\to\workspace" --json
+curl.exe --connect-timeout 10 --max-time 20 https://<固定域名>/health
+```
+
+最终应看到真实的 `198.41.*` 地址、Tunnel `running: true`、固定地址非空，并且 `/health` 返回 HTTP 200。`/mcp` 在没有 Bearer token 时返回 HTTP 401 是正常的，不代表 Tunnel 失败。
+
 ## 简单安装（Windows）
 
 需要：Git、Node.js 20+、pnpm、cloudflared，以及 Codex 桌面版。首次在 ChatGPT 中添加连接前，必须在 ChatGPT 的 **Settings → Security** 中开启 **Developer mode**。
