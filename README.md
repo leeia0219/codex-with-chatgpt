@@ -243,6 +243,27 @@ node .\bin\c2c.js doctor -w $cameraRelate --json
 
 首次换到另一台电脑时，Git 只能带走代码和 `LOCAL_SETUP.example.md`。需要在新电脑复制并填写新的 `LOCAL_SETUP.md`；Cloudflare 登录、ChatGPT 授权和运行状态仍需在新电脑完成一次。
 
+### 切换 Codex 账号时继续使用同一个 tunnel
+
+如果只是在**同一台电脑、同一个 Windows 用户**中退出 Codex，再登录另一个 Codex 账号，可以继续使用原来的 Cloudflare named tunnel、固定域名、workspace 和 `LOCAL_SETUP.md`。Tunnel 与本机文件和 Cloudflare credential 绑定，不与 Codex 登录账号绑定，因此不要删除 tunnel、不要更换固定域名，也不要因为切换 Codex 账号而删除 ChatGPT App。
+
+登录新的 Codex 账号后，在仓库根目录运行：
+
+```powershell
+.\scripts\Read-C2CLocalSetup.ps1
+node .\bin\c2c.js doctor -w "<LOCAL_SETUP.md 中的 Workspace root>" --json
+```
+
+也可以直接运行配对辅助脚本；它会读取同一份本机配置并先检查 tunnel：
+
+```powershell
+.\scripts\Get-C2CPairingCode.ps1 -CopyToClipboard
+```
+
+只有浏览器已经出现配对码输入框时才运行配对脚本。若 ChatGPT 账号、App、OAuth scopes 和固定 hostname 都没有变化，通常不需要重新配对，只需让新 Codex 会话读取 `AGENTS.md`、`LOCAL_SETUP.md` 和 `skill/SKILL.md`。
+
+这里的“切换 Codex 账号”不等于“切换 ChatGPT 账号”：切换 ChatGPT 账号仍需要在新账号开启 Developer mode、添加并授权 App、创建 Project。换电脑或换 Windows 用户也可能无法访问原来的本机 credential，需要重新进行 Cloudflare 登录或 tunnel 配置。
+
 ### ChatGPT 设置要求
 
 在 ChatGPT 浏览器中打开 **Settings → Security**，开启 **Developer mode**，然后再创建或授权 `Codex with ChatGPT` App。切换到另一个 ChatGPT 账号后，需要在该账号中重新开启 Developer mode，并重新添加和授权 App；原账号的 Project、对话和连接不会自动转移。
